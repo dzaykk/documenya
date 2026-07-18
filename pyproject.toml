@@ -1,19 +1,59 @@
 [project]
 name = "documenya"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered document chat API with RAG."
 readme = "README.md"
 requires-python = ">=3.12"
+
 dependencies = [
-    "alembic>=1.18.5",
-    "bcrypt>=5.0.0",
-    "binary>=1.0.2",
-    "fastapi>=0.139.2",
-    "passlib>=1.7.4",
-    "psycopg>=3.3.4",
-    "pydantic-settings>=2.14.2",
-    "python-jose>=3.5.0",
-    "sqlalchemy>=2.0.51",
-    "sqlmodel>=0.0.39",
-    "uvicorn>=0.51.0",
+    "fastapi",
+    "uvicorn[standard]",
+
+    "sqlalchemy>=2.0",
+    "asyncpg",
+    "psycopg[binary]",
+    "alembic",
+
+    "pydantic>=2",
+    "pydantic-settings",
+
+    "pwdlib[argon2]",
+
+    "python-jose[cryptography]",
+
+    "python-multipart",
+
+    "aiofiles",
+
+    "greenlet"
+]
+
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+
+    "ruff",
+    "mypy",
+
+    "pre-commit",
+
+    "types-python-jose"
+]
+
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B"
 ]
