@@ -52,10 +52,12 @@ class DocumentService:
     async def get_user_documents(
         self,
         user: User,
+        search: str | None = None,
     ) -> list[Document]:
 
         return await self.document_repository.get_user_documents(
-            user.id
+            user.id,
+            search,
         )
 
     async def get_document(

@@ -34,13 +34,15 @@ router = APIRouter(
     summary="List user documents",
 )
 async def get_documents(
+    search: str | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = DocumentService(db)
 
     return await service.get_user_documents(
-        current_user
+        current_user,
+        search,
     )
 
 

@@ -41,15 +41,30 @@ class DocumentRepository:
     async def get_user_documents(
         self,
         user_id: int,
+        search: str | None = None,
     ) -> list[Document]:
 
-        result = await self.session.execute(
+        query = (
             select(Document)
             .where(Document.owner_id == user_id)
-            .order_by(Document.created_at.desc())
+        )   
+
+        if search:
+            query = query.where(
+                Document.title.ilike(f"%{search}%")
+            )
+
+        query = query.order_by(
+            Document.created_at.desc()
         )
 
-        return list(result.scalars().all())
+        result = await self.session.execute(
+            query
+        )
+
+        return list(
+            result.scalars().all()
+        )
 
     async def delete(
         self,
