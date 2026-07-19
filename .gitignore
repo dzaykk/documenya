@@ -9,3 +9,6 @@ __pycache__/
 
 # IDE and editor files
 .vscode/
+
+# Uploaded files
+app/storage/uploads/

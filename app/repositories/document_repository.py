@@ -15,9 +15,10 @@ class DocumentRepository:
         self,
         document: Document,
     ) -> Document:
+
         self.session.add(document)
 
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(document)
 
         return document
@@ -25,10 +26,13 @@ class DocumentRepository:
     async def get_by_id(
         self,
         document_id: int,
+        owner_id: int,
     ) -> Document | None:
+
         result = await self.session.execute(
             select(Document).where(
-                Document.id == document_id
+                Document.id == document_id,
+                Document.owner_id == owner_id,
             )
         )
 
@@ -51,4 +55,6 @@ class DocumentRepository:
         self,
         document: Document,
     ) -> None:
+
         await self.session.delete(document)
+        await self.session.commit()

@@ -2,12 +2,15 @@ services:
   postgres:
     image: postgres:17
     container_name: documenya-postgres
+
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: documenya
+
     ports:
       - "5432:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -15,11 +18,18 @@ services:
   app:
     build: .
     container_name: documenya-api
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
     ports:
       - "8000:8000"
+
+    volumes:
+      - .:/app
+
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
+
     depends_on:
       - postgres
 

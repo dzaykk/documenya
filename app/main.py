@@ -24,7 +24,7 @@ app = FastAPI(
 )
 
 
-# exception handlers
+# Exception handlers
 app.add_exception_handler(
     EmailAlreadyRegistered,
     email_exists_handler,
@@ -41,7 +41,7 @@ app.add_exception_handler(
 )
 
 
-# middleware
+# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -51,7 +51,7 @@ app.add_middleware(
 )
 
 
-# routers
+# Routers
 app.include_router(
     auth.router
 )
@@ -65,7 +65,7 @@ app.include_router(
 )
 
 
-# health check
+# Health check
 @app.get(
     "/health",
     tags=["Health"],
