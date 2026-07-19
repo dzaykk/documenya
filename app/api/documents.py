@@ -8,6 +8,7 @@ from fastapi import (
     HTTPException,
     UploadFile,
     status,
+    Query,
 )
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,7 @@ from app.models.user import User
 from app.schemas.document import (
     DocumentRead,
     DocumentUpdate,
+    DocumentList,
 )
 from app.services.document_service import DocumentService
 
@@ -30,11 +32,20 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=list[DocumentRead],
+    response_model=DocumentList,
     summary="List user documents",
 )
 async def get_documents(
     search: str | None = None,
+    page: int = Query(
+        default=1,
+        ge=1,
+    ),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+    ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -43,6 +54,8 @@ async def get_documents(
     return await service.get_user_documents(
         current_user,
         search,
+        page,
+        limit,
     )
 
 

@@ -6,7 +6,10 @@ from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
 from app.services.storage_service import StorageService
 from app.services.file_validation_service import FileValidationService
-from app.schemas.document import DocumentUpdate
+from app.schemas.document import (
+    DocumentList,
+    DocumentUpdate,
+)
 
 from pathlib import Path
 
@@ -53,11 +56,30 @@ class DocumentService:
         self,
         user: User,
         search: str | None = None,
-    ) -> list[Document]:
+        page: int = 1,
+        limit: int = 20,
+    ) -> DocumentList:
 
-        return await self.document_repository.get_user_documents(
+        documents = await self.document_repository.get_user_documents(
             user.id,
             search,
+            page,
+            limit,
+        )
+
+        total = await self.document_repository.count_user_documents(
+            user.id,
+            search,
+        )
+
+        pages = (total + limit - 1) // limit
+
+        return DocumentList(
+            items=documents,
+            total=total,
+            page=page,
+            limit=limit,
+            pages=pages,
         )
 
     async def get_document(

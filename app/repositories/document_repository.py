@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
 
 from app.models.document import Document
 
@@ -42,6 +43,8 @@ class DocumentRepository:
         self,
         user_id: int,
         search: str | None = None,
+        page: int = 1,
+        limit: int = 10,
     ) -> list[Document]:
 
         query = (
@@ -57,6 +60,10 @@ class DocumentRepository:
         query = query.order_by(
             Document.created_at.desc()
         )
+
+        query = query.offset(
+            (page - 1) * limit
+        ).limit(limit)
 
         result = await self.session.execute(
             query
@@ -83,3 +90,26 @@ class DocumentRepository:
         await self.session.refresh(document)
 
         return document
+    
+    async def count_user_documents(
+        self,
+        user_id: int,
+        search: str | None = None,
+    ) -> int:
+
+        query = select(
+            func.count(Document.id)
+        ).where(
+            Document.owner_id == user_id
+        )
+
+        if search:
+            query = query.where(
+                Document.title.ilike(f"%{search}%")
+            )
+
+        result = await self.session.execute(
+            query
+        )
+
+        return result.scalar_one()

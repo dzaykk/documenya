@@ -26,7 +26,15 @@ class DocumentRead(DocumentBase):
 
 
 class DocumentList(BaseModel):
-    documents: list[DocumentRead]
+    items: list[DocumentRead]
+
+    total: int
+
+    page: int
+
+    limit: int
+
+    pages: int
 
 
 class DocumentUpdate(BaseModel):
