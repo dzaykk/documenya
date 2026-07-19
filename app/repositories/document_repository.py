@@ -58,3 +58,13 @@ class DocumentRepository:
 
         await self.session.delete(document)
         await self.session.commit()
+    
+    async def update(
+        self,
+        document: Document,
+    ) -> Document:
+
+        await self.session.commit()
+        await self.session.refresh(document)
+
+        return document

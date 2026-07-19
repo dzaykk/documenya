@@ -27,3 +27,7 @@ class DocumentRead(DocumentBase):
 
 class DocumentList(BaseModel):
     documents: list[DocumentRead]
+
+
+class DocumentUpdate(BaseModel):
+    title: str

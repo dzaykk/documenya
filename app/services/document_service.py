@@ -6,6 +6,7 @@ from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
 from app.services.storage_service import StorageService
 from app.services.file_validation_service import FileValidationService
+from app.schemas.document import DocumentUpdate
 
 from pathlib import Path
 
@@ -66,6 +67,27 @@ class DocumentService:
         return await self.document_repository.get_by_id(
             document_id,
             user.id,
+        )
+
+    async def update_document(
+        self,
+        document_id: int,
+        data: DocumentUpdate,
+        user: User,
+    ) -> Document | None:
+
+        document = await self.get_document(
+            document_id,
+            user,
+        )
+
+        if not document:
+            return None
+
+        document.title = data.title
+
+        return await self.document_repository.update(
+            document
         )
 
     async def delete_document(
