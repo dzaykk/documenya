@@ -3,16 +3,19 @@ from fastapi import (
     Depends,
     HTTPException,
     status,
+    File,
+    Form,
+    UploadFile
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from pathlib import Path
 
 from app.api.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.document import DocumentRead
 from app.services.document_service import DocumentService
-
-from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 router = APIRouter(
     prefix="/documents",
@@ -23,6 +26,7 @@ router = APIRouter(
 @router.post(
     "",
     response_model=DocumentRead,
+    summary="Upload document",
     status_code=201,
 )
 async def upload_document(
@@ -43,6 +47,7 @@ async def upload_document(
 @router.get(
     "",
     response_model=list[DocumentRead],
+    summary="List user documents",
 )
 async def get_documents(
     current_user: User = Depends(get_current_user),
@@ -59,6 +64,7 @@ async def get_documents(
 @router.get(
     "/{document_id}",
     response_model=DocumentRead,
+    summary="Get document metadata",
 )
 async def get_document(
     document_id: int,
@@ -82,9 +88,46 @@ async def get_document(
     return document
 
 
+@router.get(
+    "/{document_id}/download",
+    summary="Download document",
+)
+async def download_document(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+
+    service = DocumentService(db)
+
+    document = await service.get_document(
+        document_id,
+        current_user,
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    if not Path(document.file_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    return FileResponse(
+        path=document.file_path,
+        filename=document.filename,
+        media_type=document.mime_type,
+    )
+
+
 @router.delete(
     "/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete document",
 )
 async def delete_document(
     document_id: int,

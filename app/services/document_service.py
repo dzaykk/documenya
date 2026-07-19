@@ -5,6 +5,7 @@ from app.models.document import Document
 from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
 from app.services.storage_service import StorageService
+from app.services.file_validation_service import FileValidationService
 
 from pathlib import Path
 
@@ -27,6 +28,8 @@ class DocumentService:
         file: UploadFile,
         user: User,
     ) -> Document:
+        
+        await FileValidationService.validate(file)
 
         filename, file_path, file_size = (
             await self.storage_service.save_file(file)
