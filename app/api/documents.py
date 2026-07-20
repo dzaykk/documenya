@@ -2,25 +2,29 @@ from pathlib import Path
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
     HTTPException,
     UploadFile,
     status,
-    Query,
 )
 from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
-from app.db.session import get_db
+from app.api.dependencies import (
+    get_current_user,
+    get_document_service,
+)
+from app.models.document import DocumentStatus
 from app.models.user import User
 from app.schemas.document import (
+    DocumentContent,
+    DocumentList,
     DocumentRead,
     DocumentUpdate,
-    DocumentList,
 )
+from app.schemas.query import DocumentQueryParams
 from app.services.document_service import DocumentService
 
 
@@ -36,26 +40,13 @@ router = APIRouter(
     summary="List user documents",
 )
 async def get_documents(
-    search: str | None = None,
-    page: int = Query(
-        default=1,
-        ge=1,
-    ),
-    limit: int = Query(
-        default=20,
-        ge=1,
-        le=100,
-    ),
+    params: DocumentQueryParams = Depends(),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: DocumentService = Depends(get_document_service),
 ):
-    service = DocumentService(db)
-
     return await service.get_user_documents(
         current_user,
-        search,
-        page,
-        limit,
+        params,
     )
 
 
@@ -66,18 +57,24 @@ async def get_documents(
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_document(
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: DocumentService = Depends(get_document_service),
 ):
-    service = DocumentService(db)
-
-    return await service.create_document(
+    document = await service.create_document(
         title=title,
         file=file,
         user=current_user,
     )
+
+    background_tasks.add_task(
+        service.process_document,
+        document.id,
+    )
+
+    return document
 
 
 @router.get(
@@ -88,16 +85,14 @@ async def upload_document(
 async def get_document(
     document_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: DocumentService = Depends(get_document_service),
 ):
-    service = DocumentService(db)
-
     document = await service.get_document(
         document_id,
         current_user,
     )
 
-    if not document:
+    if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
@@ -106,56 +101,38 @@ async def get_document(
     return document
 
 
-@router.patch(
-    "/{document_id}",
-    response_model=DocumentRead,
-    summary="Update document",
+@router.get(
+    "/{document_id}/content",
+    response_model=DocumentContent,
+    summary="Get document extracted content",
 )
-async def update_document(
+async def get_document_content(
     document_id: int,
-    data: DocumentUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: DocumentService = Depends(get_document_service),
 ):
-    service = DocumentService(db)
-
-    document = await service.update_document(
+    document = await service.get_document(
         document_id,
-        data,
         current_user,
     )
 
-    if not document:
+    if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
         )
 
-    return document
-
-
-@router.delete(
-    "/{document_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete document",
-)
-async def delete_document(
-    document_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    service = DocumentService(db)
-
-    deleted = await service.delete_document(
-        document_id,
-        current_user,
-    )
-
-    if not deleted:
+    if document.status != DocumentStatus.COMPLETED.value:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document processing is not finished yet.",
         )
+
+    return DocumentContent(
+        id=document.id,
+        title=document.title,
+        content=document.content,
+    )
 
 
 @router.get(
@@ -165,16 +142,14 @@ async def delete_document(
 async def download_document(
     document_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: DocumentService = Depends(get_document_service),
 ):
-    service = DocumentService(db)
-
     document = await service.get_document(
         document_id,
         current_user,
     )
 
-    if not document:
+    if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
@@ -191,3 +166,51 @@ async def download_document(
         filename=document.filename,
         media_type=document.mime_type,
     )
+
+
+@router.patch(
+    "/{document_id}",
+    response_model=DocumentRead,
+    summary="Update document",
+)
+async def update_document(
+    document_id: int,
+    data: DocumentUpdate,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+):
+    document = await service.update_document(
+        document_id,
+        data,
+        current_user,
+    )
+
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    return document
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete document",
+)
+async def delete_document(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+):
+    deleted = await service.delete_document(
+        document_id,
+        current_user,
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )

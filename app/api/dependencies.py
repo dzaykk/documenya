@@ -8,6 +8,8 @@ from app.db.session import get_db
 from app.repositories.user_repository import UserRepository
 from app.core.security import decode_access_token
 
+from app.services.document_service import DocumentService
+
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login"
@@ -49,3 +51,9 @@ async def get_current_user(
         )
 
     return user
+
+
+def get_document_service(
+    db: AsyncSession = Depends(get_db),
+) -> DocumentService:
+    return DocumentService(db)

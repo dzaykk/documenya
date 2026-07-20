@@ -1,6 +1,9 @@
-from sqlalchemy import select
+from sqlalchemy import (
+    select,
+    func,
+    or_,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select
 
 from app.models.document import Document
 
@@ -39,6 +42,19 @@ class DocumentRepository:
 
         return result.scalar_one_or_none()
 
+    async def get_by_id_internal(
+        self,
+        document_id: int,
+    ) -> Document | None:
+
+        result = await self.session.execute(
+            select(Document).where(
+                Document.id == document_id
+            )
+        )
+
+        return result.scalar_one_or_none()
+
     async def get_user_documents(
         self,
         user_id: int,
@@ -49,21 +65,33 @@ class DocumentRepository:
 
         query = (
             select(Document)
-            .where(Document.owner_id == user_id)
-        )   
+            .where(
+                Document.owner_id == user_id
+            )
+        )
 
         if search:
             query = query.where(
-                Document.title.ilike(f"%{search}%")
+                or_(
+                    Document.title.ilike(
+                        f"%{search}%"
+                    ),
+                    Document.content.ilike(
+                        f"%{search}%"
+                    ),
+                )
             )
 
-        query = query.order_by(
-            Document.created_at.desc()
+        query = (
+            query
+            .order_by(
+                Document.created_at.desc()
+            )
+            .offset(
+                (page - 1) * limit
+            )
+            .limit(limit)
         )
-
-        query = query.offset(
-            (page - 1) * limit
-        ).limit(limit)
 
         result = await self.session.execute(
             query
@@ -97,15 +125,25 @@ class DocumentRepository:
         search: str | None = None,
     ) -> int:
 
-        query = select(
-            func.count(Document.id)
-        ).where(
-            Document.owner_id == user_id
+        query = (
+            select(
+                func.count(Document.id)
+            )
+            .where(
+                Document.owner_id == user_id
+            )
         )
 
         if search:
             query = query.where(
-                Document.title.ilike(f"%{search}%")
+                or_(
+                    Document.title.ilike(
+                        f"%{search}%"
+                    ),
+                    Document.content.ilike(
+                        f"%{search}%"
+                    ),
+                )
             )
 
         result = await self.session.execute(

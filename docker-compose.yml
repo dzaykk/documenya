@@ -26,6 +26,7 @@ services:
 
     volumes:
       - .:/app
+      - /app/.venv
 
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
