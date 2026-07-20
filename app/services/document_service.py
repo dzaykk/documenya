@@ -2,7 +2,7 @@ import logging
 
 from pathlib import Path
 
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import (
@@ -182,6 +182,37 @@ class DocumentService:
         return await self.document_repository.update(
             document
         )
+
+
+    async def retry_processing(
+        self,
+        document_id: int,
+        user: User,
+    ) -> Document | None:
+
+        document = await self.get_document(
+            document_id,
+            user,
+        )
+
+        if not document:
+            return None
+
+        if document.status == DocumentStatus.PROCESSING.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Document is already processing",
+            )
+
+        document.status = DocumentStatus.PROCESSING.value
+        document.processing_error = None
+        document.content = None
+
+        await self.document_repository.update(
+            document
+        )
+
+        return document  
 
 
     async def delete_document(

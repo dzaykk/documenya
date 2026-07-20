@@ -77,6 +77,39 @@ async def upload_document(
     return document
 
 
+@router.post(
+    "/{document_id}/retry",
+    response_model=DocumentRead,
+    summary="Retry document processing",
+)
+async def retry_document_processing(
+    document_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(
+        get_document_service,
+    ),
+):
+
+    document = await service.retry_processing(
+        document_id,
+        current_user,
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    background_tasks.add_task(
+        service.process_document,
+        document.id,
+    )
+
+    return document
+
+
 @router.get(
     "/{document_id}",
     response_model=DocumentRead,

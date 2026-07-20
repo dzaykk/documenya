@@ -8,24 +8,19 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-
     "sqlalchemy>=2.0",
     "asyncpg",
     "psycopg[binary]",
     "alembic",
-
     "pydantic>=2",
     "pydantic-settings",
-
     "pwdlib[argon2]",
-
     "python-jose[cryptography]",
-
     "python-multipart",
-
     "aiofiles",
-
-    "greenlet"
+    "greenlet",
+    "pdfplumber>=0.11.10",
+    "python-docx>=1.2.0",
 ]
 
 
