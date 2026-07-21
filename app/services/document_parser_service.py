@@ -3,6 +3,11 @@ from pathlib import Path
 import pdfplumber
 from docx import Document
 
+from app.exceptions.document import (
+    EmptyDocumentError,
+    UnsupportedDocumentTypeError,
+)
+
 
 DOCX_MIME = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -29,12 +34,14 @@ class DocumentParserService:
             text = self._parse_docx(path)
 
         else:
-            raise ValueError(
+            raise UnsupportedDocumentTypeError(
                 f"Unsupported file type: {mime_type}"
             )
 
-        if not text.strip():
-            raise ValueError(
+        text = self._normalize_text(text)
+
+        if not text:
+            raise EmptyDocumentError(
                 "No text found in document"
             )
 
@@ -80,3 +87,21 @@ class DocumentParserService:
         ]
 
         return "\n".join(paragraphs)
+
+    def _normalize_text(
+        self,
+        text: str,
+    ) -> str:
+
+        lines = [
+            line.strip()
+            for line in text.splitlines()
+        ]
+
+        lines = [
+            line
+            for line in lines
+            if line
+        ]
+
+        return "\n".join(lines)

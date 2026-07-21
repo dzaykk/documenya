@@ -16,6 +16,10 @@ from app.api.dependencies import (
     get_current_user,
     get_document_service,
 )
+from app.exceptions.document import (
+    DocumentAlreadyProcessingError,
+    DocumentNotFoundError,
+)
 from app.models.document import DocumentStatus
 from app.models.user import User
 from app.schemas.document import (
@@ -86,21 +90,15 @@ async def retry_document_processing(
     document_id: int,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(
-        get_document_service,
-    ),
+    service: DocumentService = Depends(get_document_service),
 ):
-
     document = await service.retry_processing(
         document_id,
         current_user,
     )
 
-    if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+    if document is None:
+        raise DocumentNotFoundError()
 
     background_tasks.add_task(
         service.process_document,
@@ -126,10 +124,7 @@ async def get_document(
     )
 
     if document is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+        raise DocumentNotFoundError()
 
     return document
 
@@ -150,15 +145,14 @@ async def get_document_content(
     )
 
     if document is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+        raise DocumentNotFoundError()
 
-    if document.status != DocumentStatus.COMPLETED.value:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Document processing is not finished yet.",
+    if document.status == DocumentStatus.PROCESSING.value:
+        raise DocumentAlreadyProcessingError()
+
+    if document.status == DocumentStatus.FAILED.value:
+        raise DocumentAlreadyProcessingError(
+            "Document processing failed. Retry processing first."
         )
 
     return DocumentContent(
@@ -183,10 +177,7 @@ async def download_document(
     )
 
     if document is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+        raise DocumentNotFoundError()
 
     if not Path(document.file_path).exists():
         raise HTTPException(
@@ -219,10 +210,7 @@ async def update_document(
     )
 
     if document is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+        raise DocumentNotFoundError()
 
     return document
 
@@ -243,7 +231,4 @@ async def delete_document(
     )
 
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+        raise DocumentNotFoundError()

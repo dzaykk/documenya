@@ -10,10 +10,23 @@ from app.exceptions.auth import (
     InvalidCredentials,
 )
 
+from app.exceptions.document import (
+    DocumentNotFoundError,
+    DocumentAlreadyProcessingError,
+    DocumentAlreadyProcessedError,
+    UnsupportedDocumentTypeError,
+    EmptyDocumentError,
+)
+
 from app.exceptions.handlers import (
     email_exists_handler,
     username_taken_handler,
     invalid_credentials_handler,
+    document_not_found_handler,
+    document_processing_handler,
+    document_processed_handler,
+    unsupported_document_handler,
+    empty_document_handler,
 )
 
 
@@ -38,6 +51,31 @@ app.add_exception_handler(
 app.add_exception_handler(
     InvalidCredentials,
     invalid_credentials_handler,
+)
+
+app.add_exception_handler(
+    DocumentNotFoundError,
+    document_not_found_handler,
+)
+
+app.add_exception_handler(
+    DocumentAlreadyProcessingError,
+    document_processing_handler,
+)
+
+app.add_exception_handler(
+    DocumentAlreadyProcessedError,
+    document_processed_handler,
+)
+
+app.add_exception_handler(
+    UnsupportedDocumentTypeError,
+    unsupported_document_handler,
+)
+
+app.add_exception_handler(
+    EmptyDocumentError,
+    empty_document_handler,
 )
 
 

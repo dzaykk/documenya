@@ -1,9 +1,13 @@
 import logging
-
 from pathlib import Path
 
-from fastapi import UploadFile, HTTPException, status
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.exceptions.document import (
+    DocumentAlreadyProcessingError,
+    DocumentNotFoundError,
+)
 
 from app.models.document import (
     Document,
@@ -16,18 +20,6 @@ from app.repositories.document_repository import (
     DocumentRepository,
 )
 
-from app.services.storage_service import (
-    StorageService,
-)
-
-from app.services.file_validation_service import (
-    FileValidationService,
-)
-
-from app.services.document_parser_service import (
-    DocumentParserService,
-)
-
 from app.schemas.document import (
     DocumentList,
     DocumentUpdate,
@@ -37,6 +29,17 @@ from app.schemas.query import (
     DocumentQueryParams,
 )
 
+from app.services.document_parser_service import (
+    DocumentParserService,
+)
+
+from app.services.file_validation_service import (
+    FileValidationService,
+)
+
+from app.services.storage_service import (
+    StorageService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +51,11 @@ class DocumentService:
         session: AsyncSession,
     ):
         self.document_repository = DocumentRepository(
-            session
+            session,
         )
 
         self.storage_service = StorageService()
         self.parser_service = DocumentParserService()
-
 
     async def create_document(
         self,
@@ -80,9 +82,8 @@ class DocumentService:
         )
 
         return await self.document_repository.create(
-            document
+            document,
         )
-
 
     async def process_document(
         self,
@@ -90,7 +91,7 @@ class DocumentService:
     ) -> None:
 
         document = await self.document_repository.get_by_id_internal(
-            document_id
+            document_id,
         )
 
         if not document:
@@ -101,6 +102,7 @@ class DocumentService:
                 file_path=document.file_path,
                 mime_type=document.mime_type,
             )
+
             document.content = content
             document.status = DocumentStatus.COMPLETED.value
             document.processing_error = None
@@ -115,9 +117,8 @@ class DocumentService:
             document.processing_error = str(e)
 
         await self.document_repository.update(
-            document
+            document,
         )
-
 
     async def get_user_documents(
         self,
@@ -149,71 +150,63 @@ class DocumentService:
             pages=pages,
         )
 
-
     async def get_document(
         self,
         document_id: int,
         user: User,
-    ) -> Document | None:
+    ) -> Document:
 
-        return await self.document_repository.get_by_id(
+        document = await self.document_repository.get_by_id(
             document_id,
             user.id,
         )
-    
+
+        if document is None:
+            raise DocumentNotFoundError()
+
+        return document
 
     async def update_document(
         self,
         document_id: int,
         data: DocumentUpdate,
         user: User,
-    ) -> Document | None:
+    ) -> Document:
 
         document = await self.get_document(
             document_id,
             user,
         )
 
-        if not document:
-            return None
-
         document.title = data.title
 
         return await self.document_repository.update(
-            document
+            document,
         )
-
 
     async def retry_processing(
         self,
         document_id: int,
         user: User,
-    ) -> Document | None:
+    ) -> Document:
 
         document = await self.get_document(
             document_id,
             user,
         )
 
-        if not document:
-            return None
-
         if document.status == DocumentStatus.PROCESSING.value:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Document is already processing",
-            )
+            raise DocumentAlreadyProcessingError()
 
         document.status = DocumentStatus.PROCESSING.value
         document.processing_error = None
         document.content = None
 
         await self.document_repository.update(
-            document
+            document,
         )
 
-        return document  
-
+        return document
 
     async def delete_document(
         self,
@@ -226,18 +219,15 @@ class DocumentService:
             user,
         )
 
-        if not document:
-            return False
-
         file_path = Path(
-            document.file_path
+            document.file_path,
         )
 
         if file_path.exists():
             file_path.unlink()
 
         await self.document_repository.delete(
-            document
+            document,
         )
 
         return True
