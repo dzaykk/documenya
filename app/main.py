@@ -29,6 +29,9 @@ from app.exceptions.handlers import (
     empty_document_handler,
 )
 
+from app.core.logging import setup_logging
+
+setup_logging()
 
 app = FastAPI(
     title=settings.APP_NAME,

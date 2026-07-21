@@ -64,6 +64,12 @@ class DocumentService:
         user: User,
     ) -> Document:
 
+        logger.info(
+            "User %s started uploading document '%s'",
+            user.id,
+            title,
+        )
+
         await FileValidationService.validate(file)
 
         filename, file_path, file_size = (
@@ -81,9 +87,16 @@ class DocumentService:
             status=DocumentStatus.PROCESSING.value,
         )
 
-        return await self.document_repository.create(
+        document = await self.document_repository.create(
             document,
         )
+
+        logger.info(
+            "Document %s uploaded successfully",
+            document.id,
+        )
+
+        return document
 
     async def process_document(
         self,
@@ -95,7 +108,16 @@ class DocumentService:
         )
 
         if not document:
+            logger.warning(
+                "Document %s not found during processing",
+                document_id,
+            )
             return
+
+        logger.info(
+            "Started processing document %s",
+            document.id,
+        )
 
         try:
             content = await self.parser_service.extract_text(
@@ -106,6 +128,11 @@ class DocumentService:
             document.content = content
             document.status = DocumentStatus.COMPLETED.value
             document.processing_error = None
+
+            logger.info(
+                "Document %s processed successfully",
+                document.id,
+            )
 
         except Exception as e:
             logger.exception(
@@ -180,9 +207,16 @@ class DocumentService:
 
         document.title = data.title
 
-        return await self.document_repository.update(
+        document = await self.document_repository.update(
             document,
         )
+
+        logger.info(
+            "Document %s updated",
+            document.id,
+        )
+
+        return document
 
     async def retry_processing(
         self,
@@ -202,8 +236,14 @@ class DocumentService:
         document.processing_error = None
         document.content = None
 
-        await self.document_repository.update(
+        document = await self.document_repository.update(
             document,
+        )
+
+        logger.info(
+            "User %s requested reprocessing for document %s",
+            user.id,
+            document.id,
         )
 
         return document
@@ -228,6 +268,11 @@ class DocumentService:
 
         await self.document_repository.delete(
             document,
+        )
+
+        logger.info(
+            "Document %s deleted",
+            document.id,
         )
 
         return True
