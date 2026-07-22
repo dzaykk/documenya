@@ -17,6 +17,11 @@ from sqlalchemy.orm import (
 
 from app.db.base import Base
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+
 
 class DocumentStatus(str, Enum):
     PROCESSING = "processing"
@@ -94,7 +99,6 @@ class Document(Base):
         nullable=False,
     )
 
-    owner = relationship(
-        "User",
+    owner: Mapped["User"] = relationship(
         back_populates="documents",
     )

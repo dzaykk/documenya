@@ -5,6 +5,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.document import Document
 
 class User(Base):
     __tablename__ = "users"
@@ -49,8 +53,7 @@ class User(Base):
         nullable=False,
     )
 
-    documents = relationship(
-        "Document",
+    documents: Mapped[list["Document"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
     )
