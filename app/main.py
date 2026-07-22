@@ -4,30 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, documents, users
 from app.core.config import settings
 
-from app.exceptions.auth import (
-    EmailAlreadyRegistered,
-    UsernameAlreadyTaken,
-    InvalidCredentials,
-)
-
-from app.exceptions.document import (
-    DocumentNotFoundError,
-    DocumentAlreadyProcessingError,
-    DocumentAlreadyProcessedError,
-    UnsupportedDocumentTypeError,
-    EmptyDocumentError,
-)
-
-from app.exceptions.handlers import (
-    email_exists_handler,
-    username_taken_handler,
-    invalid_credentials_handler,
-    document_not_found_handler,
-    document_processing_handler,
-    document_processed_handler,
-    unsupported_document_handler,
-    empty_document_handler,
-)
+from app.exceptions.base import AppException
+from app.exceptions.handlers import app_exception_handler
 
 from app.core.logging import setup_logging
 
@@ -42,43 +20,8 @@ app = FastAPI(
 
 # Exception handlers
 app.add_exception_handler(
-    EmailAlreadyRegistered,
-    email_exists_handler,
-)
-
-app.add_exception_handler(
-    UsernameAlreadyTaken,
-    username_taken_handler,
-)
-
-app.add_exception_handler(
-    InvalidCredentials,
-    invalid_credentials_handler,
-)
-
-app.add_exception_handler(
-    DocumentNotFoundError,
-    document_not_found_handler,
-)
-
-app.add_exception_handler(
-    DocumentAlreadyProcessingError,
-    document_processing_handler,
-)
-
-app.add_exception_handler(
-    DocumentAlreadyProcessedError,
-    document_processed_handler,
-)
-
-app.add_exception_handler(
-    UnsupportedDocumentTypeError,
-    unsupported_document_handler,
-)
-
-app.add_exception_handler(
-    EmptyDocumentError,
-    empty_document_handler,
+    AppException,
+    app_exception_handler,
 )
 
 
@@ -93,17 +36,9 @@ app.add_middleware(
 
 
 # Routers
-app.include_router(
-    auth.router
-)
-
-app.include_router(
-    users.router
-)
-
-app.include_router(
-    documents.router
-)
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(documents.router)
 
 
 # Health check

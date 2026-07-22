@@ -1,3 +1,4 @@
+from typing import Annotated
 from pathlib import Path
 
 from fastapi import (
@@ -6,22 +7,21 @@ from fastapi import (
     Depends,
     File,
     Form,
-    HTTPException,
     UploadFile,
     status,
 )
 from fastapi.responses import FileResponse
 
 from app.api.dependencies import (
-    get_current_user,
-    get_document_service,
+    CurrentUser,
+    DocumentServiceDep,
 )
 from app.exceptions.document import (
     DocumentAlreadyProcessingError,
+    DocumentProcessingFailedError,
     DocumentNotFoundError,
 )
 from app.models.document import DocumentStatus
-from app.models.user import User
 from app.schemas.document import (
     DocumentContent,
     DocumentList,
@@ -29,7 +29,6 @@ from app.schemas.document import (
     DocumentUpdate,
 )
 from app.schemas.query import DocumentQueryParams
-from app.services.document_service import DocumentService
 
 
 router = APIRouter(
@@ -38,15 +37,21 @@ router = APIRouter(
 )
 
 
+DocumentParams = Annotated[
+    DocumentQueryParams,
+    Depends(),
+]
+
+
 @router.get(
     "",
     response_model=DocumentList,
     summary="List user documents",
 )
 async def get_documents(
-    params: DocumentQueryParams = Depends(),
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
+    params: DocumentParams,
 ):
     return await service.get_user_documents(
         current_user,
@@ -62,10 +67,10 @@ async def get_documents(
 )
 async def upload_document(
     background_tasks: BackgroundTasks,
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
     title: str = Form(...),
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
 ):
     document = await service.create_document(
         title=title,
@@ -89,16 +94,13 @@ async def upload_document(
 async def retry_document_processing(
     document_id: int,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
 ):
     document = await service.retry_processing(
         document_id,
         current_user,
     )
-
-    if document is None:
-        raise DocumentNotFoundError()
 
     background_tasks.add_task(
         service.process_document,
@@ -115,18 +117,13 @@ async def retry_document_processing(
 )
 async def get_document(
     document_id: int,
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
 ):
-    document = await service.get_document(
+    return await service.get_document(
         document_id,
         current_user,
     )
-
-    if document is None:
-        raise DocumentNotFoundError()
-
-    return document
 
 
 @router.get(
@@ -136,24 +133,19 @@ async def get_document(
 )
 async def get_document_content(
     document_id: int,
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
 ):
     document = await service.get_document(
         document_id,
         current_user,
     )
 
-    if document is None:
-        raise DocumentNotFoundError()
-
     if document.status == DocumentStatus.PROCESSING.value:
         raise DocumentAlreadyProcessingError()
 
     if document.status == DocumentStatus.FAILED.value:
-        raise DocumentAlreadyProcessingError(
-            "Document processing failed. Retry processing first."
-        )
+        raise DocumentProcessingFailedError()
 
     return DocumentContent(
         id=document.id,
@@ -168,22 +160,16 @@ async def get_document_content(
 )
 async def download_document(
     document_id: int,
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
 ):
     document = await service.get_document(
         document_id,
         current_user,
     )
 
-    if document is None:
-        raise DocumentNotFoundError()
-
     if not Path(document.file_path).exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found",
-        )
+        raise DocumentNotFoundError()
 
     return FileResponse(
         path=document.file_path,
@@ -199,20 +185,15 @@ async def download_document(
 )
 async def update_document(
     document_id: int,
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
     data: DocumentUpdate,
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
 ):
-    document = await service.update_document(
+    return await service.update_document(
         document_id,
         data,
         current_user,
     )
-
-    if document is None:
-        raise DocumentNotFoundError()
-
-    return document
 
 
 @router.delete(
@@ -222,13 +203,10 @@ async def update_document(
 )
 async def delete_document(
     document_id: int,
-    current_user: User = Depends(get_current_user),
-    service: DocumentService = Depends(get_document_service),
+    current_user: CurrentUser,
+    service: DocumentServiceDep,
 ):
-    deleted = await service.delete_document(
+    await service.delete_document(
         document_id,
         current_user,
     )
-
-    if not deleted:
-        raise DocumentNotFoundError()

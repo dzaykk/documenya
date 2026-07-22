@@ -12,22 +12,31 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Application
     APP_NAME: str = "Documenya"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
+    # API
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+
+    # Database
     DATABASE_URL: str
 
+    # JWT
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Storage
     UPLOAD_DIR: str = "app/storage/uploads"
+    MAX_FILE_SIZE: int = 50 * 1024 * 1024
 
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-
-    CORS_ORIGINS: list[str] = Field(default=["*"])
+    # CORS
+    CORS_ORIGINS: list[str] = Field(
+        default=["*"],
+    )
 
 
 @lru_cache

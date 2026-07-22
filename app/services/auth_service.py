@@ -1,3 +1,6 @@
+import logging
+
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pwdlib import PasswordHash
@@ -15,6 +18,7 @@ from app.exceptions.auth import (
 
 password_hash = PasswordHash.recommended()
 
+logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(
@@ -28,11 +32,20 @@ class AuthService:
         user_data: UserCreate,
     ) -> User:
 
+        logger.info(
+            "Registration attempt for email '%s'",
+            user_data.email,
+        )
+
         existing_user = await self.user_repository.get_by_email(
             user_data.email
         )
 
         if existing_user:
+            logger.warning(
+                "Registration failed: email '%s' already exists",
+                user_data.email,
+            )
             raise EmailAlreadyRegistered()
 
         existing_username = await self.user_repository.get_by_username(
@@ -40,17 +53,28 @@ class AuthService:
         )
 
         if existing_username:
+            logger.warning(
+                "Registration failed: username '%s' already exists",
+                user_data.username,
+            )
             raise UsernameAlreadyTaken()
 
         user = User(
             email=user_data.email,
             username=user_data.username,
             hashed_password=self.hash_password(
-                user_data.password
+                user_data.password,
             ),
         )
 
-        return await self.user_repository.create(user)
+        user = await self.user_repository.create(user)
+
+        logger.info(
+            "User %s registered successfully",
+            user.id,
+        )
+
+        return user
 
 
     def hash_password(
@@ -77,19 +101,37 @@ class AuthService:
         self,
         email: str,
         password: str,
-    ) -> User | None:
+    ) -> User:
+
+        logger.info(
+            "Authentication attempt for '%s'",
+            email,
+        )
 
         user = await self.user_repository.get_by_email(
-            email
+            email,
         )
 
         if not user:
+            logger.warning(
+                "Authentication failed: user '%s' not found",
+                email,
+            )
             raise InvalidCredentials()
 
         if not self.verify_password(
             password,
             user.hashed_password,
         ):
+            logger.warning(
+                "Authentication failed: invalid password for '%s'",
+                email,
+            )
             raise InvalidCredentials()
+
+        logger.info(
+            "User %s authenticated successfully",
+            user.id,
+        )
 
         return user

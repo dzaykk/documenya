@@ -1,14 +1,26 @@
-class AuthException(Exception):
-    pass
+from app.exceptions.base import AppException
 
 
-class EmailAlreadyRegistered(AuthException):
-    pass
+class EmailAlreadyRegistered(AppException):
+    status_code = 400
+    detail = "Email already registered"
 
 
-class UsernameAlreadyTaken(AuthException):
-    pass
+class UsernameAlreadyTaken(AppException):
+    status_code = 400
+    detail = "Username already taken"
 
 
-class InvalidCredentials(AuthException):
-    pass
+class InvalidCredentials(AppException):
+    status_code = 401
+    detail = "Invalid credentials"
+
+
+class InvalidTokenError(AppException):
+    status_code = 401
+    detail = "Invalid token"
+
+
+class UserNotFoundError(AppException):
+    status_code = 401
+    detail = "User not found"

@@ -3,9 +3,11 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.models.document import DocumentStatus
+from app.schemas.types import DocumentTitle
+
 
 class DocumentBase(BaseModel):
-    title: str
+    title: DocumentTitle
 
 
 class DocumentCreate(DocumentBase):
@@ -24,7 +26,9 @@ class DocumentRead(BaseModel):
 
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
 
 
 class DocumentList(BaseModel):
@@ -37,11 +41,14 @@ class DocumentList(BaseModel):
 
 
 class DocumentUpdate(BaseModel):
-    title: str
+    title: DocumentTitle
 
 
 class DocumentContent(BaseModel):
     id: int
     title: str
     content: str | None
-    model_config = ConfigDict(from_attributes=True)
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )

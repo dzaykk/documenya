@@ -2,14 +2,20 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.types import (
+    Email,
+    Password,
+    Username,
+)
+
 
 class UserBase(BaseModel):
-    email: str
-    username: str
+    email: Email
+    username: Username
 
 
 class UserCreate(UserBase):
-    password: str
+    password: Password
 
 
 class UserRead(UserBase):
@@ -23,4 +29,4 @@ class UserRead(UserBase):
 
 
 class UserUpdate(BaseModel):
-    username: str | None = None
+    username: Username | None = None

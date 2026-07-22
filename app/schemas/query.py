@@ -1,9 +1,11 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.types import SearchQuery
+
 
 class DocumentQueryParams(BaseModel):
 
-    search: str | None = None
+    search: SearchQuery | None = None
 
     page: int = Field(
         default=1,

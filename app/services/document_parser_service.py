@@ -3,14 +3,15 @@ from pathlib import Path
 import pdfplumber
 from docx import Document
 
+from app.core.constants import (
+    DOCX_MIME,
+    PDF_MIME,
+    TXT_MIME,
+)
+
 from app.exceptions.document import (
     EmptyDocumentError,
     UnsupportedDocumentTypeError,
-)
-
-
-DOCX_MIME = (
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
 
 
@@ -24,26 +25,27 @@ class DocumentParserService:
 
         path = Path(file_path)
 
-        if mime_type == "text/plain":
+        if not path.exists():
+            raise FileNotFoundError(
+                f"File does not exist: {file_path}"
+            )
+
+        if mime_type == TXT_MIME:
             text = self._parse_txt(path)
 
-        elif mime_type == "application/pdf":
+        elif mime_type == PDF_MIME:
             text = self._parse_pdf(path)
 
         elif mime_type == DOCX_MIME:
             text = self._parse_docx(path)
 
         else:
-            raise UnsupportedDocumentTypeError(
-                f"Unsupported file type: {mime_type}"
-            )
+            raise UnsupportedDocumentTypeError()
 
         text = self._normalize_text(text)
 
         if not text:
-            raise EmptyDocumentError(
-                "No text found in document"
-            )
+            raise EmptyDocumentError()
 
         return text
 

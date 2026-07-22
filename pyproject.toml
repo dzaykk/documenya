@@ -12,7 +12,7 @@ dependencies = [
     "asyncpg",
     "psycopg[binary]",
     "alembic",
-    "pydantic>=2",
+    "pydantic[email]>=2",
     "pydantic-settings",
     "pwdlib[argon2]",
     "python-jose[cryptography]",
