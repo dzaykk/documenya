@@ -29,4 +29,10 @@ class UserRead(UserBase):
 
 
 class UserUpdate(BaseModel):
+    email: Email | None = None
     username: Username | None = None
+
+
+class PasswordUpdate(BaseModel):
+    current_password: Password
+    new_password: Password

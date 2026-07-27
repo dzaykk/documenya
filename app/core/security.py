@@ -9,8 +9,12 @@ from app.core.config import settings
 password_hash = PasswordHash.recommended()
 
 
-def hash_password(password: str) -> str:
-    return password_hash.hash(password)
+def hash_password(
+    password: str,
+) -> str:
+    return password_hash.hash(
+        password,
+    )
 
 
 def verify_password(
@@ -24,15 +28,19 @@ def verify_password(
 
 
 def create_access_token(
-    subject: str,
+    subject: int,
+    token_version: int,
 ) -> str:
 
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    expire = datetime.now(
+        timezone.utc,
+    ) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
 
     payload = {
-        "sub": subject,
+        "sub": str(subject),
+        "ver": token_version,
         "exp": expire,
     }
 
@@ -45,21 +53,36 @@ def create_access_token(
 
 def decode_access_token(
     token: str,
-) -> str | None:
+) -> tuple[int, int] | None:
 
     try:
+
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
+            algorithms=[
+                settings.ALGORITHM,
+            ],
         )
 
         subject = payload.get("sub")
 
-        if subject is None:
+        version = payload.get("ver")
+
+        if (
+            subject is None
+            or version is None
+        ):
             return None
 
-        return subject
+        return (
+            int(subject),
+            int(version),
+        )
 
-    except JWTError:
+    except (
+        JWTError,
+        ValueError,
+        TypeError,
+    ):
         return None

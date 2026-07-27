@@ -1,14 +1,20 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from app.models.document import Document
+
 
 class User(Base):
     __tablename__ = "users"
@@ -36,8 +42,15 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,
-        default=True,
         nullable=False,
+        default=True,
+    )
+
+    token_version: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        server_default="1",
     )
 
     created_at: Mapped[datetime] = mapped_column(

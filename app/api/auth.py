@@ -1,14 +1,28 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    status,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.dependencies import DBSession
-from app.core.security import create_access_token
-from app.schemas.auth import Token
-from app.schemas.user import UserCreate, UserRead
-from app.services.auth_service import AuthService
+from app.api.dependencies import (
+    AuthServiceDep,
+)
 
+from app.core.security import (
+    create_access_token,
+)
+
+from app.schemas.auth import (
+    ReactivateRequest,
+    Token,
+)
+from app.schemas.user import (
+    UserCreate,
+    UserRead,
+)
 
 router = APIRouter(
     prefix="/auth",
@@ -29,13 +43,12 @@ OAuthForm = Annotated[
 )
 async def register(
     user_data: UserCreate,
-    db: DBSession,
+    service: AuthServiceDep,
 ):
-    service = AuthService(db)
 
-    user = await service.register(user_data)
-
-    return user
+    return await service.register(
+        user_data,
+    )
 
 
 @router.post(
@@ -44,16 +57,44 @@ async def register(
 )
 async def login(
     form_data: OAuthForm,
-    db: DBSession,
+    service: AuthServiceDep,
 ):
-    service = AuthService(db)
 
     user = await service.authenticate(
         form_data.username,
         form_data.password,
     )
 
-    token = create_access_token(user.email)
+    token = create_access_token(
+        user.id,
+        user.token_version,
+    )
+
+    return Token(
+        access_token=token,
+        token_type="bearer",
+    )
+
+
+@router.post(
+    "/reactivate",
+    response_model=Token,
+    summary="Reactivate account",
+)
+async def reactivate(
+    data: ReactivateRequest,
+    service: AuthServiceDep,
+):
+
+    user = await service.reactivate(
+        data.email,
+        data.password,
+    )
+
+    token = create_access_token(
+        user.id,
+        user.token_version,
+    )
 
     return Token(
         access_token=token,

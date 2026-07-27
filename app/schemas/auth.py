@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.types import Email, Password
+
 
 class Token(BaseModel):
     access_token: str
@@ -8,4 +10,10 @@ class Token(BaseModel):
 
 class TokenPayload(BaseModel):
     sub: str
+    ver: int
     exp: int
+
+
+class ReactivateRequest(BaseModel):
+    email: Email
+    password: Password
