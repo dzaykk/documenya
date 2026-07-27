@@ -34,9 +34,11 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 50 * 1024 * 1024
 
     # CORS
-    CORS_ORIGINS: list[str] = Field(
-        default=["*"],
-    )
+    CORS_ORIGINS: list[str] = ["*"]
+
+    # CELERY
+    CELERY_BROKER_URL: str = "redis://redis:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
 
 
 @lru_cache

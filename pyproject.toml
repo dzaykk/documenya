@@ -1,28 +1,42 @@
 [project]
 name = "documenya"
 version = "0.1.0"
-description = "AI-powered document chat API with RAG."
+description = "AI-powered document processing API"
 readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
+    # API
     "fastapi",
     "uvicorn[standard]",
+
+    # Database
     "sqlalchemy>=2.0",
     "asyncpg",
     "psycopg[binary]",
+    "greenlet",
     "alembic",
+
+    # Validation
     "pydantic[email]>=2",
     "pydantic-settings",
+
+    # Auth
     "pwdlib[argon2]",
     "python-jose[cryptography]",
     "python-multipart",
+
+    # Storage
     "aiofiles",
-    "greenlet",
+
+    # Document parsing
     "pdfplumber>=0.11.10",
     "python-docx>=1.2.0",
-]
 
+    # Background tasks
+    "celery>=5.4",
+    "redis>=5.0",
+]
 
 [dependency-groups]
 dev = [
@@ -35,14 +49,12 @@ dev = [
 
     "pre-commit",
 
-    "types-python-jose"
+    "types-python-jose",
 ]
-
 
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-
 
 [tool.ruff.lint]
 select = [
@@ -50,5 +62,15 @@ select = [
     "F",
     "I",
     "UP",
-    "B"
+    "B",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_unused_configs = true
+warn_return_any = true
+ignore_missing_imports = true

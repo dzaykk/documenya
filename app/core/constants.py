@@ -1,9 +1,7 @@
+# MIME
 PDF_MIME = "application/pdf"
-
 TXT_MIME = "text/plain"
-
 MARKDOWN_MIME = "text/markdown"
-
 DOCX_MIME = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
