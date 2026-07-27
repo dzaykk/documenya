@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff / MyPy
+.mypy_cache/
+.ruff_cache/
+
+# Alembic cache
+*.db
+
+# Local uploads
+app/storage/uploads/
+
+# Docker
+docker-compose.yml
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db

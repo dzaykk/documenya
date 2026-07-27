@@ -1,4 +1,5 @@
 services:
+
   postgres:
     image: postgres:17
     container_name: documenya-postgres
@@ -14,15 +15,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  app:
+
+  redis:
+    image: redis:7-alpine
+    container_name: documenya-redis
+
+    ports:
+      - "6379:6379"
+
+
+  api:
     build: .
     container_name: documenya-api
 
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-    ports:
-      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
     volumes:
       - .:/app
@@ -30,9 +42,39 @@ services:
 
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+
+    ports:
+      - "8000:8000"
 
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+
+  worker:
+    build: .
+    container_name: documenya-worker
+
+    command: celery -A app.workers.celery_app.celery_app worker --pool=solo --loglevel=info
+
+    volumes:
+      - .:/app
+      - /app/.venv
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 
 volumes:
