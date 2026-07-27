@@ -1,31 +1,34 @@
 import logging
 
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from pwdlib import PasswordHash
-
-from app.models.user import User
-from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate
-
-from app.exceptions.auth import (
-    EmailAlreadyRegistered,
-    UsernameAlreadyTaken,
-    InvalidCredentials,
+from app.core.security import (
+    hash_password,
+    verify_password,
 )
 
+from app.exceptions.auth import (
+    AccountAlreadyActiveError,
+    AccountDeactivatedError,
+    EmailAlreadyRegistered,
+    InvalidCredentials,
+    UsernameAlreadyTaken,
+)
 
-password_hash = PasswordHash.recommended()
+from app.models.user import User
+
+from app.schemas.user import UserCreate
+
+from app.uow.base import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
 
+
 class AuthService:
+
     def __init__(
         self,
-        session: AsyncSession,
+        uow: AbstractUnitOfWork,
     ):
-        self.user_repository = UserRepository(session)
+        self.uow = uow
 
     async def register(
         self,
@@ -37,101 +40,168 @@ class AuthService:
             user_data.email,
         )
 
-        existing_user = await self.user_repository.get_by_email(
-            user_data.email
-        )
+        async with self.uow:
 
-        if existing_user:
-            logger.warning(
-                "Registration failed: email '%s' already exists",
+            existing_user = await self.uow.users.get_by_email(
                 user_data.email,
             )
-            raise EmailAlreadyRegistered()
 
-        existing_username = await self.user_repository.get_by_username(
-            user_data.username
-        )
+            if existing_user:
 
-        if existing_username:
-            logger.warning(
-                "Registration failed: username '%s' already exists",
+                logger.warning(
+                    "Registration failed: email '%s' already exists",
+                    user_data.email,
+                )
+
+                raise EmailAlreadyRegistered()
+
+            existing_username = await self.uow.users.get_by_username(
                 user_data.username,
             )
-            raise UsernameAlreadyTaken()
 
-        user = User(
-            email=user_data.email,
-            username=user_data.username,
-            hashed_password=self.hash_password(
-                user_data.password,
-            ),
-        )
+            if existing_username:
 
-        user = await self.user_repository.create(user)
+                logger.warning(
+                    "Registration failed: username '%s' already exists",
+                    user_data.username,
+                )
 
-        logger.info(
-            "User %s registered successfully",
-            user.id,
-        )
+                raise UsernameAlreadyTaken()
 
-        return user
+            user = User(
+                email=user_data.email,
+                username=user_data.username,
+                hashed_password=hash_password(
+                    user_data.password,
+                ),
+            )
 
+            user = await self.uow.users.create(
+                user,
+            )
 
-    def hash_password(
-        self,
-        password: str,
-    ) -> str:
+            await self.uow.commit()
 
-        return password_hash.hash(password)
+            logger.info(
+                "User %s registered",
+                user.id,
+            )
 
-
-    def verify_password(
-        self,
-        password: str,
-        hashed_password: str,
-    ) -> bool:
-
-        return password_hash.verify(
-            password,
-            hashed_password,
-        )
-
+            return user
 
     async def authenticate(
+        self,
+        login: str,
+        password: str,
+    ) -> User:
+
+        logger.info(
+            "Authentication attempt for '%s'",
+            login,
+        )
+
+        async with self.uow:
+
+            user = await self.uow.users.get_by_login(
+                login,
+            )
+
+            if user is None:
+
+                logger.warning(
+                    "Authentication failed for '%s': user not found",
+                    login,
+                )
+
+                raise InvalidCredentials()
+
+            if not verify_password(
+                password,
+                user.hashed_password,
+            ):
+
+                logger.warning(
+                    "Authentication failed for '%s': invalid password",
+                    login,
+                )
+
+                raise InvalidCredentials()
+
+            if not user.is_active:
+
+                logger.warning(
+                    "Authentication failed: user %s is deactivated",
+                    user.id,
+                )
+
+                raise AccountDeactivatedError()
+
+            logger.info(
+                "User %s authenticated",
+                user.id,
+            )
+
+            return user
+
+    async def reactivate(
         self,
         email: str,
         password: str,
     ) -> User:
 
         logger.info(
-            "Authentication attempt for '%s'",
+            "Reactivation attempt for '%s'",
             email,
         )
 
-        user = await self.user_repository.get_by_email(
-            email,
-        )
+        async with self.uow:
 
-        if not user:
-            logger.warning(
-                "Authentication failed: user '%s' not found",
+            user = await self.uow.users.get_by_email(
                 email,
             )
-            raise InvalidCredentials()
 
-        if not self.verify_password(
-            password,
-            user.hashed_password,
-        ):
-            logger.warning(
-                "Authentication failed: invalid password for '%s'",
-                email,
+            if user is None:
+
+                logger.warning(
+                    "Reactivation failed: user '%s' not found",
+                    email,
+                )
+
+                raise InvalidCredentials()
+
+            if not verify_password(
+                password,
+                user.hashed_password,
+            ):
+
+                logger.warning(
+                    "Reactivation failed: invalid password for '%s'",
+                    email,
+                )
+
+                raise InvalidCredentials()
+
+            if user.is_active:
+
+                logger.warning(
+                    "Reactivation failed: user %s is already active",
+                    user.id,
+                )
+
+                raise AccountAlreadyActiveError()
+
+            user.is_active = True
+            user.token_version += 1
+
+            user = await self.uow.users.update(
+                user,
             )
-            raise InvalidCredentials()
 
-        logger.info(
-            "User %s authenticated successfully",
-            user.id,
-        )
+            await self.uow.commit()
 
-        return user
+            logger.info(
+                "User %s reactivated",
+                user.id,
+            )
+
+            return user

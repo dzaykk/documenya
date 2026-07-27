@@ -1,61 +1,32 @@
 import logging
-from pathlib import Path
 
 from fastapi import UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exceptions.document import (
-    DocumentAlreadyProcessingError,
-    DocumentNotFoundError,
-)
-
-from app.models.document import (
-    Document,
-    DocumentStatus,
-)
-
+from app.exceptions.document import DocumentNotFoundError
+from app.models.document import Document
 from app.models.user import User
-
-from app.repositories.document_repository import (
-    DocumentRepository,
-)
-
 from app.schemas.document import (
     DocumentList,
     DocumentUpdate,
 )
-
-from app.schemas.query import (
-    DocumentQueryParams,
-)
-
-from app.services.document_parser_service import (
-    DocumentParserService,
-)
-
+from app.schemas.query import DocumentQueryParams
 from app.services.file_validation_service import (
     FileValidationService,
 )
-
-from app.services.storage_service import (
-    StorageService,
-)
+from app.storage.service import StorageService
+from app.uow.base import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)
 
 
 class DocumentService:
-
     def __init__(
         self,
-        session: AsyncSession,
+        uow: AbstractUnitOfWork,
+        storage_service: StorageService,
     ):
-        self.document_repository = DocumentRepository(
-            session,
-        )
-
-        self.storage_service = StorageService()
-        self.parser_service = DocumentParserService()
+        self.uow = uow
+        self.storage_service = storage_service
 
     async def create_document(
         self,
@@ -65,117 +36,74 @@ class DocumentService:
     ) -> Document:
 
         logger.info(
-            "User %s started uploading document '%s'",
+            "User %s uploads '%s'",
             user.id,
             title,
         )
 
         await FileValidationService.validate(file)
 
-        filename, file_path, file_size = (
-            await self.storage_service.save_file(file)
-        )
-
-        document = Document(
-            title=title,
-            filename=filename,
-            file_path=file_path,
-            mime_type=file.content_type,
-            file_size=file_size,
-            content=None,
-            owner_id=user.id,
-            status=DocumentStatus.PROCESSING.value,
-        )
-
-        document = await self.document_repository.create(
-            document,
-        )
-
         logger.info(
-            "Document %s uploaded successfully",
-            document.id,
+            "File '%s' passed validation",
+            file.filename,
         )
 
-        return document
-
-    async def process_document(
-        self,
-        document_id: int,
-    ) -> None:
-
-        document = await self.document_repository.get_by_id_internal(
-            document_id,
-        )
-
-        if not document:
-            logger.warning(
-                "Document %s not found during processing",
-                document_id,
-            )
-            return
-
-        logger.info(
-            "Started processing document %s",
-            document.id,
-        )
+        file_path: str | None = None
 
         try:
-            content = await self.parser_service.extract_text(
-                file_path=document.file_path,
-                mime_type=document.mime_type,
-            )
 
-            document.content = content
-            document.status = DocumentStatus.COMPLETED.value
-            document.processing_error = None
+            filename, file_path, file_size = (
+                await self.storage_service.save_file(file)
+            )
 
             logger.info(
-                "Document %s processed successfully",
+                "File saved to '%s'",
+                file_path,
+            )
+
+            document = Document(
+                title=title,
+                filename=filename,
+                file_path=file_path,
+                mime_type=file.content_type,
+                file_size=file_size,
+                owner_id=user.id,
+            )
+
+            async with self.uow:
+
+                document = await self.uow.documents.create(
+                    document,
+                )
+
+                await self.uow.commit()
+
+            logger.info(
+                "Document %s created",
                 document.id,
             )
 
-        except Exception as e:
+            return document
+
+        except Exception:
+
             logger.exception(
-                "Failed to process document %s",
-                document.id,
+                "Document creation failed for user %s",
+                user.id,
             )
 
-            document.status = DocumentStatus.FAILED.value
-            document.processing_error = str(e)
+            if file_path is not None:
 
-        await self.document_repository.update(
-            document,
-        )
+                logger.info(
+                    "Removing uploaded file '%s'",
+                    file_path,
+                )
 
-    async def get_user_documents(
-        self,
-        user: User,
-        params: DocumentQueryParams,
-    ) -> DocumentList:
+                await self.storage_service.delete_file(
+                    file_path,
+                )
 
-        documents = await self.document_repository.get_user_documents(
-            user_id=user.id,
-            search=params.search,
-            page=params.page,
-            limit=params.limit,
-        )
-
-        total = await self.document_repository.count_user_documents(
-            user_id=user.id,
-            search=params.search,
-        )
-
-        pages = (
-            total + params.limit - 1
-        ) // params.limit
-
-        return DocumentList(
-            items=documents,
-            total=total,
-            page=params.page,
-            limit=params.limit,
-            pages=pages,
-        )
+            raise
 
     async def get_document(
         self,
@@ -183,15 +111,80 @@ class DocumentService:
         user: User,
     ) -> Document:
 
-        document = await self.document_repository.get_by_id(
+        logger.info(
+            "User %s requests document %s",
+            user.id,
             document_id,
+        )
+
+        async with self.uow:
+
+            document = await self.uow.documents.get_by_id(
+                document_id,
+                user.id,
+            )
+
+            if document is None:
+
+                logger.warning(
+                    "Document %s not found for user %s",
+                    document_id,
+                    user.id,
+                )
+
+                raise DocumentNotFoundError()
+
+            logger.info(
+                "Document %s returned to user %s",
+                document.id,
+                user.id,
+            )
+
+            return document
+
+    async def get_user_documents(
+        self,
+        user: User,
+        params: DocumentQueryParams,
+    ) -> DocumentList:
+
+        logger.info(
+            "User %s requests document list",
             user.id,
         )
 
-        if document is None:
-            raise DocumentNotFoundError()
+        async with self.uow:
 
-        return document
+            items = await self.uow.documents.get_user_documents(
+                user.id,
+                params.search,
+                params.page,
+                params.limit,
+            )
+
+            total = await self.uow.documents.count_user_documents(
+                user.id,
+                params.search,
+            )
+
+        pages = (
+            total + params.limit - 1
+        ) // params.limit
+
+        logger.info(
+            "Returned %s of %s documents for user %s",
+            len(items),
+            total,
+            user.id,
+        )
+
+        return DocumentList(
+            items=items,
+            total=total,
+            page=params.page,
+            limit=params.limit,
+            pages=pages,
+        )
 
     async def update_document(
         self,
@@ -200,50 +193,40 @@ class DocumentService:
         user: User,
     ) -> Document:
 
-        document = await self.get_document(
-            document_id,
-            user,
-        )
+        async with self.uow:
 
-        document.title = data.title
+            document = await self.uow.documents.get_by_id(
+                document_id,
+                user.id,
+            )
 
-        document = await self.document_repository.update(
-            document,
-        )
+            if document is None:
+
+                logger.warning(
+                    "Document %s not found for user %s",
+                    document_id,
+                    user.id,
+                )
+
+                raise DocumentNotFoundError()
+
+            logger.info(
+                "Changing title of document %s",
+                document.id,
+            )
+
+            document.title = data.title
+
+            document = await self.uow.documents.update(
+                document,
+            )
+
+            await self.uow.commit()
 
         logger.info(
-            "Document %s updated",
+            "Document %s updated by user %s",
             document.id,
-        )
-
-        return document
-
-    async def retry_processing(
-        self,
-        document_id: int,
-        user: User,
-    ) -> Document:
-
-        document = await self.get_document(
-            document_id,
-            user,
-        )
-
-        if document.status == DocumentStatus.PROCESSING.value:
-            raise DocumentAlreadyProcessingError()
-
-        document.status = DocumentStatus.PROCESSING.value
-        document.processing_error = None
-        document.content = None
-
-        document = await self.document_repository.update(
-            document,
-        )
-
-        logger.info(
-            "User %s requested reprocessing for document %s",
             user.id,
-            document.id,
         )
 
         return document
@@ -252,27 +235,49 @@ class DocumentService:
         self,
         document_id: int,
         user: User,
-    ) -> bool:
+    ) -> None:
 
-        document = await self.get_document(
-            document_id,
-            user,
+        async with self.uow:
+
+            document = await self.uow.documents.get_by_id(
+                document_id,
+                user.id,
+            )
+
+            if document is None:
+
+                logger.warning(
+                    "Document %s not found for user %s",
+                    document_id,
+                    user.id,
+                )
+
+                raise DocumentNotFoundError()
+
+            file_path = document.file_path
+
+            await self.uow.documents.delete(
+                document,
+            )
+
+            await self.uow.commit()
+
+        logger.info(
+            "Removing file '%s'",
+            file_path,
         )
 
-        file_path = Path(
-            document.file_path,
-        )
-
-        if file_path.exists():
-            file_path.unlink()
-
-        await self.document_repository.delete(
-            document,
+        await self.storage_service.delete_file(
+            file_path,
         )
 
         logger.info(
-            "Document %s deleted",
-            document.id,
+            "File '%s' removed",
+            file_path,
         )
 
-        return True
+        logger.info(
+            "Document %s deleted by user %s",
+            document_id,
+            user.id,
+        )

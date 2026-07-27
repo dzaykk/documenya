@@ -24,3 +24,13 @@ class InvalidTokenError(AppException):
 class UserNotFoundError(AppException):
     status_code = 401
     detail = "User not found"
+
+
+class AccountDeactivatedError(AppException):
+    status_code = 403
+    detail = "Account is deactivated"
+
+
+class AccountAlreadyActiveError(AppException):
+    status_code = 400
+    detail = "Account is already active"

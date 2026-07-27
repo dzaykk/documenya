@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pdfplumber
@@ -14,6 +15,8 @@ from app.exceptions.document import (
     UnsupportedDocumentTypeError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class DocumentParserService:
 
@@ -23,29 +26,61 @@ class DocumentParserService:
         mime_type: str,
     ) -> str:
 
+        logger.info(
+            "Extracting text from '%s' (%s)",
+            file_path,
+            mime_type,
+        )
+
         path = Path(file_path)
 
         if not path.exists():
+
+            logger.error(
+                "File '%s' does not exist",
+                file_path,
+            )
+
             raise FileNotFoundError(
                 f"File does not exist: {file_path}"
             )
 
         if mime_type == TXT_MIME:
+
             text = self._parse_txt(path)
 
         elif mime_type == PDF_MIME:
+
             text = self._parse_pdf(path)
 
         elif mime_type == DOCX_MIME:
+
             text = self._parse_docx(path)
 
         else:
+
+            logger.warning(
+                "Unsupported mime type '%s'",
+                mime_type,
+            )
+
             raise UnsupportedDocumentTypeError()
 
         text = self._normalize_text(text)
 
         if not text:
+
+            logger.warning(
+                "Document '%s' is empty",
+                file_path,
+            )
+
             raise EmptyDocumentError()
+
+        logger.info(
+            "Successfully extracted text from '%s'",
+            file_path,
+        )
 
         return text
 
