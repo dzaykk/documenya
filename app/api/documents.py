@@ -1,9 +1,7 @@
 from typing import Annotated
-from pathlib import Path
 
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -15,27 +13,36 @@ from fastapi.responses import FileResponse
 from app.api.dependencies import (
     CurrentUser,
     DocumentServiceDep,
+    DocumentProcessingServiceDep,
 )
+
 from app.exceptions.document import (
     DocumentAlreadyProcessingError,
-    DocumentProcessingFailedError,
     DocumentNotFoundError,
+    DocumentProcessingFailedError,
 )
+
 from app.models.document import DocumentStatus
+
 from app.schemas.document import (
     DocumentContent,
     DocumentList,
     DocumentRead,
     DocumentUpdate,
 )
-from app.schemas.query import DocumentQueryParams
 
+from app.schemas.query import (
+    DocumentQueryParams,
+)
+
+from app.tasks.document_tasks import (
+    process_document_task,
+)
 
 router = APIRouter(
     prefix="/documents",
     tags=["Documents"],
 )
-
 
 DocumentParams = Annotated[
     DocumentQueryParams,
@@ -62,24 +69,23 @@ async def get_documents(
 @router.post(
     "",
     response_model=DocumentRead,
-    summary="Upload document",
     status_code=status.HTTP_201_CREATED,
+    summary="Upload document",
 )
 async def upload_document(
-    background_tasks: BackgroundTasks,
     current_user: CurrentUser,
     service: DocumentServiceDep,
     title: str = Form(...),
     file: UploadFile = File(...),
 ):
+
     document = await service.create_document(
         title=title,
         file=file,
         user=current_user,
     )
 
-    background_tasks.add_task(
-        service.process_document,
+    process_document_task.delay(
         document.id,
     )
 
@@ -93,17 +99,16 @@ async def upload_document(
 )
 async def retry_document_processing(
     document_id: int,
-    background_tasks: BackgroundTasks,
     current_user: CurrentUser,
-    service: DocumentServiceDep,
+    service: DocumentProcessingServiceDep,
 ):
+
     document = await service.retry_processing(
         document_id,
         current_user,
     )
 
-    background_tasks.add_task(
-        service.process_document,
+    process_document_task.delay(
         document.id,
     )
 
@@ -113,7 +118,7 @@ async def retry_document_processing(
 @router.get(
     "/{document_id}",
     response_model=DocumentRead,
-    summary="Get document metadata",
+    summary="Get document",
 )
 async def get_document(
     document_id: int,
@@ -129,22 +134,29 @@ async def get_document(
 @router.get(
     "/{document_id}/content",
     response_model=DocumentContent,
-    summary="Get document extracted content",
+    summary="Get extracted document content",
 )
 async def get_document_content(
     document_id: int,
     current_user: CurrentUser,
     service: DocumentServiceDep,
 ):
+
     document = await service.get_document(
         document_id,
         current_user,
     )
 
-    if document.status == DocumentStatus.PROCESSING.value:
+    if (
+        document.status
+        == DocumentStatus.PROCESSING.value
+    ):
         raise DocumentAlreadyProcessingError()
 
-    if document.status == DocumentStatus.FAILED.value:
+    if (
+        document.status
+        == DocumentStatus.FAILED.value
+    ):
         raise DocumentProcessingFailedError()
 
     return DocumentContent(
@@ -163,12 +175,15 @@ async def download_document(
     current_user: CurrentUser,
     service: DocumentServiceDep,
 ):
+
     document = await service.get_document(
         document_id,
         current_user,
     )
 
-    if not Path(document.file_path).exists():
+    if not service.storage_service.exists(
+        document.file_path,
+    ):
         raise DocumentNotFoundError()
 
     return FileResponse(
@@ -206,6 +221,7 @@ async def delete_document(
     current_user: CurrentUser,
     service: DocumentServiceDep,
 ):
+
     await service.delete_document(
         document_id,
         current_user,
