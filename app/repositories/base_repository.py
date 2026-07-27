@@ -6,38 +6,23 @@ ModelType = TypeVar("ModelType")
 
 
 class BaseRepository(Generic[ModelType]):
-    def __init__(
-        self,
-        session: AsyncSession,
-    ):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(
-        self,
-        obj: ModelType,
-    ) -> ModelType:
-
+    async def create(self, obj: ModelType) -> ModelType:
         self.session.add(obj)
-
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(obj)
-
         return obj
 
-    async def update(
-        self,
-        obj: ModelType,
-    ) -> ModelType:
-
-        await self.session.commit()
+    async def update(self, obj: ModelType) -> ModelType:
+        await self.session.flush()
         await self.session.refresh(obj)
-
         return obj
 
-    async def delete(
-        self,
-        obj: ModelType,
-    ) -> None:
-
+    async def delete(self, obj: ModelType) -> None:
         await self.session.delete(obj)
-        await self.session.commit()
+        await self.session.flush()
+
+    async def refresh(self, obj: ModelType) -> None:
+        await self.session.refresh(obj)
