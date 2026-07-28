@@ -12,3 +12,8 @@ __pycache__/
 
 # Uploaded files
 app/storage/uploads/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
