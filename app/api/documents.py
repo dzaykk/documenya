@@ -149,13 +149,13 @@ async def get_document_content(
 
     if (
         document.status
-        == DocumentStatus.PROCESSING.value
+        == DocumentStatus.PROCESSING
     ):
         raise DocumentAlreadyProcessingError()
 
     if (
         document.status
-        == DocumentStatus.FAILED.value
+        == DocumentStatus.FAILED
     ):
         raise DocumentProcessingFailedError()
 

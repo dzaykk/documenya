@@ -71,7 +71,7 @@ class DocumentProcessingService:
                 )
 
                 document.status = (
-                    DocumentStatus.COMPLETED.value
+                    DocumentStatus.COMPLETED
                 )
 
                 document.processing_error = None
@@ -89,7 +89,7 @@ class DocumentProcessingService:
                 )
 
                 document.status = (
-                    DocumentStatus.FAILED.value
+                    DocumentStatus.FAILED
                 )
 
                 document.processing_error = str(
@@ -138,7 +138,7 @@ class DocumentProcessingService:
 
             if (
                 document.status
-                == DocumentStatus.PROCESSING.value
+                == DocumentStatus.PROCESSING
             ):
 
                 logger.warning(
@@ -149,7 +149,7 @@ class DocumentProcessingService:
                 raise DocumentAlreadyProcessingError()
 
             document.status = (
-                DocumentStatus.PROCESSING.value
+                DocumentStatus.PROCESSING
             )
 
             document.processing_error = None

@@ -47,7 +47,7 @@ async def test_process_document_success(
     )
 
     assert document.status == (
-        DocumentStatus.COMPLETED.value
+        DocumentStatus.COMPLETED
     )
 
     assert document.processing_error is None
@@ -84,7 +84,7 @@ async def test_process_document_parser_failure(
     )
 
     assert document.status == (
-        DocumentStatus.FAILED.value
+        DocumentStatus.FAILED
     )
 
     assert document.processing_error == (
@@ -120,7 +120,7 @@ async def test_process_document_file_error_saved(
     )
 
     assert document.status == (
-        DocumentStatus.FAILED.value
+        DocumentStatus.FAILED
     )
 
     assert document.processing_error == (
@@ -156,7 +156,7 @@ async def test_retry_processing_success(
     user,
 ):
     document.status = (
-        DocumentStatus.FAILED.value
+        DocumentStatus.FAILED
     )
 
     document.content = (
@@ -183,7 +183,7 @@ async def test_retry_processing_success(
     assert result is document
 
     assert document.status == (
-        DocumentStatus.PROCESSING.value
+        DocumentStatus.PROCESSING
     )
 
     assert document.content is None
@@ -226,7 +226,7 @@ async def test_retry_processing_when_already_processing(
     user,
 ):
     document.status = (
-        DocumentStatus.PROCESSING.value
+        DocumentStatus.PROCESSING
     )
 
     uow.documents.get_by_id.return_value = (
@@ -254,7 +254,7 @@ async def test_retry_processing_completed_document(
     user,
 ):
     document.status = (
-        DocumentStatus.COMPLETED.value
+        DocumentStatus.COMPLETED
     )
 
     uow.documents.get_by_id.return_value = (
@@ -271,7 +271,7 @@ async def test_retry_processing_completed_document(
     )
 
     assert result.status == (
-        DocumentStatus.PROCESSING.value
+        DocumentStatus.PROCESSING
     )
 
     uow.documents.update.assert_awaited_once_with(

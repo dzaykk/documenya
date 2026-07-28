@@ -1,14 +1,17 @@
 from datetime import datetime
-from enum import Enum
+from enum import Enum as PyEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
+    Enum,
     ForeignKey,
     Integer,
     String,
     Text,
     func,
 )
+
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -17,13 +20,12 @@ from sqlalchemy.orm import (
 
 from app.db.base import Base
 
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.user import User
 
 
-class DocumentStatus(str, Enum):
+class DocumentStatus(str, PyEnum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -80,10 +82,16 @@ class Document(Base):
         nullable=True,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(20),
+    status: Mapped[DocumentStatus] = mapped_column(
+        Enum(
+            DocumentStatus,
+            values_callable=lambda enum: [
+                item.value for item in enum
+            ],
+            name="document_status",
+        ),
         nullable=False,
-        default=DocumentStatus.PROCESSING.value,
+        default=DocumentStatus.PROCESSING,
     )
 
     created_at: Mapped[datetime] = mapped_column(

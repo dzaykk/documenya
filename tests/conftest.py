@@ -107,7 +107,7 @@ def document(user):
     document.id = 1
 
     document.status = (
-        DocumentStatus.PROCESSING.value
+        DocumentStatus.PROCESSING
     )
 
     document.processing_error = None
