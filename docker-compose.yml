@@ -1,81 +1,104 @@
 services:
-
   postgres:
     image: postgres:17
-    container_name: documenya-postgres
-
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: documenya
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d documenya"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-
   redis:
     image: redis:7-alpine
-    container_name: documenya-redis
-
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  migrator:
+    build: .
+    command: alembic upgrade head
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   api:
     build: .
-    container_name: documenya-api
-
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-    volumes:
-      - .:/app
-      - /app/.venv
-
+    restart: always
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-
+      QDRANT_URL: http://qdrant:6333
     ports:
       - "8000:8000"
-
+    volumes:
+      - huggingface_cache:/opt/huggingface_cache
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_started
-
+      migrator:
+        condition: service_completed_successfully
 
   worker:
     build: .
-    container_name: documenya-worker
-
-    command: celery -A app.workers.celery_app.celery_app worker --pool=solo --loglevel=info
-
-    volumes:
-      - .:/app
-      - /app/.venv
-
+    restart: always
+    command: celery -A app.workers.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-
+      QDRANT_URL: http://qdrant:6333
+      NVIDIA_VISIBLE_DEVICES: all
+    volumes:
+      - huggingface_cache:/opt/huggingface_cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_started
-
 
 volumes:
   postgres_data:
+  qdrant_data:
+  huggingface_cache:
+    external: true
+    name: documenya_huggingface_cache
