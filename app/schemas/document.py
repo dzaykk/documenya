@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.models.document import DocumentStatus
-from app.schemas.types import DocumentTitle
+from app.schemas.types_ import DocumentTitle
 
 
 class DocumentBase(BaseModel):

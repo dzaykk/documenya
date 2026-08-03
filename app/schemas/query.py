@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.types import SearchQuery
+from app.schemas.types_ import SearchQuery
 
 
 class DocumentQueryParams(BaseModel):

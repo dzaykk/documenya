@@ -1,11 +1,12 @@
 from fastapi import UploadFile
 
+from app.storage.base import StorageBackend
 from app.storage.local import LocalStorageBackend
 
 
 class StorageService:
-    def __init__(self):
-        self.backend = LocalStorageBackend()
+    def __init__(self) -> None:
+        self.backend: StorageBackend = LocalStorageBackend()
 
     async def save_file(
         self,

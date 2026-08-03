@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.embeddings.dto import (
+from app.ai.embeddings.dto import (
     EmbeddedChunk,
     EmbeddingRequest,
 )
@@ -18,7 +18,7 @@ class EmbeddingProvider(Protocol):
     async def embed_query(
         self,
         text: str,
-    ) -> list[float]:
+    ) -> tuple[float, ...]:
         ...
 
     async def healthcheck(

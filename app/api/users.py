@@ -7,7 +7,6 @@ from app.api.dependencies import (
     CurrentUser,
     UserServiceDep,
 )
-
 from app.schemas.user import (
     PasswordUpdate,
     UserRead,

@@ -9,13 +9,15 @@ from app.core.constants import (
     PDF_MIME,
     TXT_MIME,
 )
-
 from app.exceptions.document import (
     EmptyDocumentError,
     UnsupportedDocumentTypeError,
 )
 
 logger = logging.getLogger(__name__)
+
+
+MIN_DOCUMENT_LENGTH = 50
 
 
 class DocumentParserService:
@@ -35,47 +37,40 @@ class DocumentParserService:
         path = Path(file_path)
 
         if not path.exists():
-
-            logger.error(
-                "File '%s' does not exist",
-                file_path,
-            )
-
             raise FileNotFoundError(
                 f"File does not exist: {file_path}"
             )
 
         if mime_type == TXT_MIME:
-
             text = self._parse_txt(path)
 
         elif mime_type == PDF_MIME:
-
             text = self._parse_pdf(path)
 
         elif mime_type == DOCX_MIME:
-
             text = self._parse_docx(path)
 
         else:
-
-            logger.warning(
-                "Unsupported mime type '%s'",
-                mime_type,
-            )
-
             raise UnsupportedDocumentTypeError()
 
         text = self._normalize_text(text)
 
-        if not text:
+        text_length = len(text)
 
+        logger.info(
+            "Extracted text length: %s characters",
+            text_length,
+        )
+
+        if text_length < MIN_DOCUMENT_LENGTH:
             logger.warning(
-                "Document '%s' is empty",
-                file_path,
+                "Document too small: %s chars",
+                text_length,
             )
 
-            raise EmptyDocumentError()
+            raise EmptyDocumentError(
+                "Document content is too small"
+            )
 
         logger.info(
             "Successfully extracted text from '%s'",
@@ -83,6 +78,7 @@ class DocumentParserService:
         )
 
         return text
+
 
     def _parse_txt(
         self,
@@ -94,12 +90,13 @@ class DocumentParserService:
             errors="ignore",
         )
 
+
     def _parse_pdf(
         self,
         path: Path,
     ) -> str:
 
-        pages: list[str] = []
+        pages = []
 
         with pdfplumber.open(path) as pdf:
             for page in pdf.pages:
@@ -110,12 +107,13 @@ class DocumentParserService:
 
         return "\n".join(pages)
 
+
     def _parse_docx(
         self,
         path: Path,
     ) -> str:
 
-        document = Document(path)
+        document = Document(str(path))
 
         paragraphs = [
             paragraph.text
@@ -124,6 +122,7 @@ class DocumentParserService:
         ]
 
         return "\n".join(paragraphs)
+
 
     def _normalize_text(
         self,

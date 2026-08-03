@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Protocol
 
-from app.llm.dto import (
+from app.ai.llm.dto import (
     ChatMessage,
+    GenerationChunk,
     GenerationConfig,
     GenerationResult,
 )
@@ -22,7 +23,7 @@ class LLMProvider(Protocol):
         self,
         messages: list[ChatMessage],
         config: GenerationConfig,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[GenerationChunk]:
         ...
 
     async def healthcheck(

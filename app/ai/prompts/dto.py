@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.llm.dto import ChatMessage
+from app.ai.llm.dto import ChatMessage
 
 
 @dataclass(slots=True, frozen=True)

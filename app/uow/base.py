@@ -1,16 +1,25 @@
 from abc import ABC, abstractmethod
 
-from app.repositories.document_repository import DocumentRepository
-from app.repositories.user_repository import UserRepository
+from app.repositories.chunk_repository import (
+    ChunkRepository,
+)
+from app.repositories.document_repository import (
+    DocumentRepository,
+)
+from app.repositories.user_repository import (
+    UserRepository,
+)
 
 
 class AbstractUnitOfWork(ABC):
-
     users: UserRepository
     documents: DocumentRepository
+    chunks: ChunkRepository
 
     @abstractmethod
-    async def __aenter__(self):
+    async def __aenter__(
+        self,
+    ):
         ...
 
     @abstractmethod
@@ -23,9 +32,13 @@ class AbstractUnitOfWork(ABC):
         ...
 
     @abstractmethod
-    async def commit(self):
+    async def commit(
+        self,
+    ):
         ...
 
     @abstractmethod
-    async def rollback(self):
+    async def rollback(
+        self,
+    ):
         ...

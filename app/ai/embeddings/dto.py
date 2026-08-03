@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.chunking.dto import DocumentChunk
+from app.ai.chunking.dto import DocumentChunk
 
 
 @dataclass(slots=True, frozen=True)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING
@@ -11,7 +13,6 @@ from sqlalchemy import (
     Text,
     func,
 )
-
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -20,10 +21,9 @@ from sqlalchemy.orm import (
 
 from app.db.base import Base
 
-
 if TYPE_CHECKING:
+    from app.models.chunk import DocumentChunk
     from app.models.user import User
-
 
 class DocumentStatus(str, PyEnum):
     PROCESSING = "processing"
@@ -107,6 +107,11 @@ class Document(Base):
         nullable=False,
     )
 
-    owner: Mapped["User"] = relationship(
+    owner: Mapped[User] = relationship(
         back_populates="documents",
+    )
+
+    chunks: Mapped[list[DocumentChunk]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
     )

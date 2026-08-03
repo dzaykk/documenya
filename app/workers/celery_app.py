@@ -2,7 +2,6 @@ from celery import Celery
 
 from app.core.config import settings
 
-
 celery_app = Celery(
     "document_worker",
     broker=settings.CELERY_BROKER_URL,
@@ -18,4 +17,6 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    task_ack_late=True,
+    task_reject_on_worker_lost=True,
 )

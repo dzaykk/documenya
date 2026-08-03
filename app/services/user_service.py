@@ -5,9 +5,9 @@ from app.core.security import (
     verify_password,
 )
 from app.exceptions.auth import (
+    EmailAlreadyRegistered,
     InvalidCredentials,
     UsernameAlreadyTaken,
-    EmailAlreadyRegistered,
 )
 from app.models.user import User
 from app.schemas.user import UserUpdate

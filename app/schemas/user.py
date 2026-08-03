@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.types import (
+from app.schemas.types_ import (
     Email,
     Password,
     Username,

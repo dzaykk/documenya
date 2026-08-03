@@ -1,22 +1,18 @@
 import logging
-
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from sqlalchemy.exc import IntegrityError
 
 from app.api import auth, documents, users
 from app.core.config import settings
-
+from app.core.logging import setup_logging
 from app.exceptions.base import AppException
 from app.exceptions.handlers import (
     app_exception_handler,
     integrity_error_handler,
 )
-
-from app.core.logging import setup_logging
 
 setup_logging()
 
@@ -49,12 +45,12 @@ def create_app() -> FastAPI:
     # Exception handlers
     app.add_exception_handler(
         AppException,
-        app_exception_handler,
+        app_exception_handler, # type: ignore[arg-type]
     )
 
     app.add_exception_handler(
         IntegrityError,
-        integrity_error_handler,
+        integrity_error_handler, # type: ignore[arg-type]
     )
 
     # Middleware

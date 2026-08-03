@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.schemas.types import Email, Password
+from app.schemas.types_ import Email, Password
 
 
 class Token(BaseModel):

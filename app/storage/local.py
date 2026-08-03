@@ -34,7 +34,7 @@ class LocalStorageBackend(StorageBackend):
     ) -> tuple[str, str, int]:
 
         extension = Path(
-            file.filename,
+            file.filename or "",
         ).suffix
 
         filename = f"{uuid4()}{extension}"
@@ -45,7 +45,7 @@ class LocalStorageBackend(StorageBackend):
 
         logger.info(
             "Saving file '%s'",
-            file.filename,
+            file.filename or "unknown",
         )
 
         with path.open("wb") as buffer:

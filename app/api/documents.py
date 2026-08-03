@@ -12,29 +12,24 @@ from fastapi.responses import FileResponse
 
 from app.api.dependencies import (
     CurrentUser,
-    DocumentServiceDep,
     DocumentProcessingServiceDep,
+    DocumentServiceDep,
 )
-
 from app.exceptions.document import (
     DocumentAlreadyProcessingError,
     DocumentNotFoundError,
     DocumentProcessingFailedError,
 )
-
 from app.models.document import DocumentStatus
-
 from app.schemas.document import (
     DocumentContent,
     DocumentList,
     DocumentRead,
     DocumentUpdate,
 )
-
 from app.schemas.query import (
     DocumentQueryParams,
 )
-
 from app.tasks.document_tasks import (
     process_document_task,
 )

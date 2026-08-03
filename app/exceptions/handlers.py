@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import Request
+from starlette.responses import Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 async def app_exception_handler(
     request: Request,
     exc: AppException,
-):
+) -> Response:
 
     logger.warning(
         "%s %s -> %s (%d)",
@@ -33,7 +34,7 @@ async def app_exception_handler(
 async def integrity_error_handler(
     request: Request,
     exc: IntegrityError,
-):
+) -> Response:
 
     logger.exception(
         "Database integrity error on %s %s",

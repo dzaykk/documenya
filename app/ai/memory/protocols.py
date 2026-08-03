@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.llm.dto import ChatMessage
+from app.ai.llm.dto import ChatMessage
 
 
 class ConversationMemory(Protocol):

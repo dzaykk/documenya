@@ -4,7 +4,6 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-
 from app.exceptions.auth import (
     AccountAlreadyActiveError,
     AccountDeactivatedError,
@@ -12,11 +11,8 @@ from app.exceptions.auth import (
     InvalidCredentials,
     UsernameAlreadyTaken,
 )
-
 from app.models.user import User
-
 from app.schemas.user import UserCreate
-
 from app.uow.base import AbstractUnitOfWork
 
 logger = logging.getLogger(__name__)

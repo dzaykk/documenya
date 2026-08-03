@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import logging
 
-from app.embeddings.dto import (
+from app.ai.embeddings.dto import (
     EmbeddedChunk,
     EmbeddingRequest,
 )
-from app.embeddings.exceptions import (
+from app.ai.embeddings.exceptions import (
     EmbeddingProviderError,
 )
-from app.embeddings.protocols import (
+from app.ai.embeddings.protocols import (
     EmbeddingProvider,
 )
 
@@ -27,7 +27,6 @@ class EmbeddingService:
         self,
         request: EmbeddingRequest,
     ) -> list[EmbeddedChunk]:
-
         logger.info(
             "Embedding %d document chunks",
             len(request.chunks),
@@ -47,30 +46,37 @@ class EmbeddingService:
 
         except Exception as exc:
             logger.exception(
-                "Embedding provider failed.",
+                "Embedding documents failed",
             )
 
             raise EmbeddingProviderError(
-                "Embedding generation failed.",
+                "Embedding generation failed",
             ) from exc
 
     async def embed_query(
         self,
         text: str,
-    ) -> list[float]:
+    ) -> tuple[float, ...]:
+
+        logger.debug(
+            "Embedding query length=%d",
+            len(text),
+        )
 
         try:
-            return await self._provider.embed_query(
+            vector = await self._provider.embed_query(
                 text,
             )
 
+            return tuple(vector)
+
         except Exception as exc:
             logger.exception(
-                "Query embedding failed.",
+                "Query embedding failed",
             )
 
             raise EmbeddingProviderError(
-                "Query embedding failed.",
+                "Query embedding failed",
             ) from exc
 
     async def healthcheck(

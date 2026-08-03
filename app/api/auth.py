@@ -10,11 +10,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.api.dependencies import (
     AuthServiceDep,
 )
-
 from app.core.security import (
     create_access_token,
 )
-
 from app.schemas.auth import (
     ReactivateRequest,
     Token,

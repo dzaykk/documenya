@@ -7,6 +7,7 @@ from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import (
     DocumentList,
+    DocumentRead,
     DocumentUpdate,
 )
 from app.schemas.query import DocumentQueryParams
@@ -179,7 +180,10 @@ class DocumentService:
         )
 
         return DocumentList(
-            items=items,
+            items=[
+                DocumentRead.model_validate(item)
+                for item in items
+            ],
             total=total,
             page=params.page,
             limit=params.limit,

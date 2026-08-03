@@ -2,23 +2,23 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.ai.embeddings.protocols import EmbeddingProvider
 from app.core.config import settings
 
-from app.embeddings.protocols import EmbeddingProvider
-
-from .fastembed_provider import FastEmbedProvider
+from .huggingface_provider import HuggingFaceEmbeddingProvider
 
 
-@lru_cache(maxsize=1)
-def get_embedding_provider() -> EmbeddingProvider:
+class EmbeddingProviderFactory:
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def create() -> EmbeddingProvider:
+        provider = settings.DEFAULT_EMBEDDING_PROVIDER
 
-    match settings.DEFAULT_EMBEDDING_PROVIDER:
+        match provider:
+            case "huggingface":
+                return HuggingFaceEmbeddingProvider()
 
-        case "fastembed":
-            return FastEmbedProvider()
-
-        case _:
-            raise RuntimeError(
-                f"Unknown embedding provider: "
-                f"{settings.DEFAULT_EMBEDDING_PROVIDER}"
-            )
+            case _:
+                raise RuntimeError(
+                    f"Unknown embedding provider: {provider}",
+                )

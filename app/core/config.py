@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = Field(...)
 
     # JWT
-    SECRET_KEY: str
+    SECRET_KEY: str = Field(...)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
@@ -41,10 +41,11 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
 
     # Embeddings
-    DEFAULT_EMBEDDING_PROVIDER: str = "fastembed"
+    DEFAULT_EMBEDDING_PROVIDER: str = "huggingface"
     EMBEDDING_MODEL: str = "BAAI/bge-m3"
     EMBEDDING_BATCH_SIZE: int = 32
     EMBEDDING_DIMENSION: int = 1024
+    EMBEDDING_DEVICE: str = "auto"
     EMBEDDING_TIMEOUT: int = 60
 
     # LLM
@@ -55,14 +56,15 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: int = 120
 
     # Vector Database
-    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_URL: str = "http://qdrant:6333"
     QDRANT_API_KEY: str | None = None
     QDRANT_COLLECTION: str = "documents"
+    QDRANT_VECTOR_SIZE: int = 1024
     QDRANT_TIMEOUT: int = 30
     VECTOR_SEARCH_TIMEOUT: int = 15
 
     # Redis Memory
-    REDIS_URL: str = "redis://localhost:6379/1"
+    REDIS_URL: str = "redis://redis:6379/1"
 
     # Retrieval
     TOP_K: int = 10
@@ -74,9 +76,10 @@ class Settings(BaseSettings):
     RETRY_ATTEMPTS: int = 3
     RETRY_BACKOFF: float = 2.0
 
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings() # type: ignore[call-arg]
 
 
 settings = get_settings()

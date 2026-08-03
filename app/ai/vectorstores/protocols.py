@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.vectorstores.dto import (
+from app.ai.vectorstores.dto import (
     VectorPoint,
     VectorSearchResult,
 )
@@ -11,22 +11,19 @@ from app.vectorstores.dto import (
 class VectorStore(Protocol):
     async def upsert(
         self,
-        collection: str,
         points: list[VectorPoint],
     ) -> None:
         ...
 
     async def search(
         self,
-        collection: str,
-        vector: list[float],
+        vector: tuple[float, ...],
         limit: int,
     ) -> list[VectorSearchResult]:
         ...
 
     async def delete_document(
         self,
-        collection: str,
         document_id: int,
     ) -> None:
         ...

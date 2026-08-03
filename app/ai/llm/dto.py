@@ -39,3 +39,10 @@ class GenerationResult:
     answer: str
     usage: TokenUsage
     finish_reason: str
+
+
+@dataclass(slots=True, frozen=True)
+class GenerationChunk:
+    text: str
+    finish_reason: str | None = None
+    usage: TokenUsage | None = None
