@@ -52,6 +52,15 @@ class VectorStoreService:
             document_id,
         )
 
+    async def delete_user_documents(
+        self,
+        user_id: int,
+    ) -> None:
+
+        await self._repository.delete_user_documents(
+            user_id,
+        )
+
     async def healthcheck(
         self,
     ) -> bool:

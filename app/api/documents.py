@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from app.api.dependencies import (
     CurrentUser,
+    DocumentCleanupServiceDep,
     DocumentProcessingServiceDep,
     DocumentServiceDep,
 )
@@ -26,6 +27,7 @@ from app.schemas.document import (
     DocumentList,
     DocumentRead,
     DocumentUpdate,
+    DocumentDeleteAllResponse,
 )
 from app.schemas.query import (
     DocumentQueryParams,
@@ -207,6 +209,26 @@ async def update_document(
 
 
 @router.delete(
+    "/all",
+    response_model=DocumentDeleteAllResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Delete all user documents",
+)
+async def delete_all_documents(
+    current_user: CurrentUser,
+    cleanup_service: DocumentCleanupServiceDep,
+):
+    deleted_count = await cleanup_service.delete_all_user_documents(
+        user=current_user,
+    )
+
+    return DocumentDeleteAllResponse(
+        message="All user documents deleted successfully",
+        deleted_count=deleted_count,
+    )
+
+
+@router.delete(
     "/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete document",
@@ -214,10 +236,10 @@ async def update_document(
 async def delete_document(
     document_id: int,
     current_user: CurrentUser,
-    service: DocumentServiceDep,
+    cleanup_service: DocumentCleanupServiceDep,
 ):
 
-    await service.delete_document(
+    await cleanup_service.delete_document(
         document_id,
         current_user,
     )

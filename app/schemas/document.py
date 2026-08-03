@@ -1,6 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+)
 
 from app.models.document import DocumentStatus
 from app.schemas.types_ import DocumentTitle
@@ -52,3 +55,8 @@ class DocumentContent(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
     )
+
+
+class DocumentDeleteAllResponse(BaseModel):
+    message: str
+    deleted_count: int

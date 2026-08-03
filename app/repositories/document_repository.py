@@ -1,4 +1,6 @@
-from sqlalchemy import func, or_, select
+from collections.abc import Sequence
+
+from sqlalchemy import delete, func, or_, select
 
 from app.models.document import Document
 from app.repositories.base_repository import BaseRepository
@@ -6,6 +8,19 @@ from app.repositories.base_repository import BaseRepository
 
 class DocumentRepository(BaseRepository[Document]):
     async def get_by_id(
+        self,
+        document_id: int,
+    ) -> Document | None:
+
+        result = await self.session.execute(
+            select(Document).where(
+                Document.id == document_id,
+            )
+        )
+
+        return result.scalar_one_or_none()
+
+    async def get_by_id_and_owner(
         self,
         document_id: int,
         owner_id: int,
@@ -20,18 +35,18 @@ class DocumentRepository(BaseRepository[Document]):
 
         return result.scalar_one_or_none()
 
-    async def get_by_id_unscoped(
+    async def get_file_paths_by_owner(
         self,
-        document_id: int,
-    ) -> Document | None:
+        owner_id: int,
+    ) -> Sequence[str]:
 
         result = await self.session.execute(
-            select(Document).where(
-                Document.id == document_id,
+            select(Document.file_path).where(
+                Document.owner_id == owner_id,
             )
         )
 
-        return result.scalar_one_or_none()
+        return result.scalars().all()
 
     async def get_user_documents(
         self,
@@ -87,3 +102,16 @@ class DocumentRepository(BaseRepository[Document]):
         result = await self.session.execute(query)
 
         return result.scalar_one()
+
+    async def delete_all_by_owner_id(
+        self,
+        owner_id: int,
+    ) -> int:
+
+        result = await self.session.execute(
+            delete(Document).where(
+                Document.owner_id == owner_id,
+            )
+        )
+
+        return result.rowcount

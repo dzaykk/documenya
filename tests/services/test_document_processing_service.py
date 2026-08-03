@@ -16,10 +16,12 @@ from app.services.document_processing_service import (
 def service(
     uow,
     parser,
+    document_embedding_service,
 ):
     return DocumentProcessingService(
         uow=uow,
         parser=parser,
+        document_embedding_service=document_embedding_service,
     )
 
 
@@ -28,9 +30,10 @@ async def test_process_document_success(
     service,
     uow,
     parser,
+    document_embedding_service,
     document,
 ):
-    uow.documents.get_by_id_unscoped.return_value = (
+    uow.documents.get_by_id.return_value = (
         document
     )
 
@@ -56,12 +59,14 @@ async def test_process_document_success(
         document.file_path,
         document.mime_type,
     )
-
-    uow.documents.update.assert_awaited_once_with(
+    
+    document_embedding_service.index_document.assert_awaited_once_with(
         document,
     )
 
-    uow.commit.assert_awaited_once()
+    uow.documents.update.assert_awaited()
+
+    uow.commit.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -71,7 +76,7 @@ async def test_process_document_parser_failure(
     parser,
     document,
 ):
-    uow.documents.get_by_id_unscoped.return_value = (
+    uow.documents.get_by_id.return_value = (
         document
     )
 
@@ -107,7 +112,7 @@ async def test_process_document_file_error_saved(
     parser,
     document,
 ):
-    uow.documents.get_by_id_unscoped.return_value = (
+    uow.documents.get_by_id.return_value = (
         document
     )
 
@@ -137,7 +142,7 @@ async def test_process_document_missing_document(
     service,
     uow,
 ):
-    uow.documents.get_by_id_unscoped.return_value = None
+    uow.documents.get_by_id.return_value = None
 
     await service.process_document(
         999,
@@ -167,7 +172,7 @@ async def test_retry_processing_success(
         "old error"
     )
 
-    uow.documents.get_by_id.return_value = (
+    uow.documents.get_by_id_and_owner.return_value = (
         document
     )
 
@@ -203,7 +208,7 @@ async def test_retry_processing_document_not_found(
     uow,
     user,
 ):
-    uow.documents.get_by_id.return_value = None
+    uow.documents.get_by_id_and_owner.return_value = None
 
     with pytest.raises(
         DocumentNotFoundError,
@@ -229,7 +234,7 @@ async def test_retry_processing_when_already_processing(
         DocumentStatus.PROCESSING
     )
 
-    uow.documents.get_by_id.return_value = (
+    uow.documents.get_by_id_and_owner.return_value = (
         document
     )
 
@@ -257,7 +262,7 @@ async def test_retry_processing_completed_document(
         DocumentStatus.COMPLETED
     )
 
-    uow.documents.get_by_id.return_value = (
+    uow.documents.get_by_id_and_owner.return_value = (
         document
     )
 

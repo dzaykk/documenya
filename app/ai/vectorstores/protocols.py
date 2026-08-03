@@ -28,6 +28,12 @@ class VectorStore(Protocol):
     ) -> None:
         ...
 
+    async def delete_user_documents(
+        self,
+        user_id: int,
+    ) -> None:
+        ...
+
     async def healthcheck(
         self,
     ) -> bool:

@@ -49,7 +49,7 @@ class DocumentProcessingService:
         async with self.uow:
 
             document = (
-                await self.uow.documents.get_by_id_unscoped(
+                await self.uow.documents.get_by_id(
                     document_id,
                 )
             )
@@ -128,7 +128,7 @@ class DocumentProcessingService:
             async with self.uow:
 
                 failed_document = (
-                    await self.uow.documents.get_by_id_unscoped(
+                    await self.uow.documents.get_by_id(
                         document.id,
                     )
                 )
@@ -154,7 +154,7 @@ class DocumentProcessingService:
         async with self.uow:
 
             completed_document = (
-                await self.uow.documents.get_by_id_unscoped(
+                await self.uow.documents.get_by_id(
                     document.id,
                 )
             )
@@ -178,7 +178,6 @@ class DocumentProcessingService:
             document_id,
         )
 
-
     async def retry_processing(
         self,
         document_id: int,
@@ -194,7 +193,7 @@ class DocumentProcessingService:
         async with self.uow:
 
             document = (
-                await self.uow.documents.get_by_id(
+                await self.uow.documents.get_by_id_and_owner(
                     document_id,
                     user.id,
                 )

@@ -43,6 +43,9 @@ from app.repositories.user_repository import (
 from app.services.auth_service import (
     AuthService,
 )
+from app.services.document_cleanup_service import (
+    DocumentCleanupService,
+)
 from app.services.document_parser_service import (
     DocumentParserService,
 )
@@ -105,19 +108,15 @@ async def get_current_user(
 
         raise InvalidTokenError()
 
-
     user_id, token_version = payload
-
 
     repository = UserRepository(
         db,
     )
 
-
     user = await repository.get_by_id(
         user_id,
     )
-
 
     if user is None:
 
@@ -128,7 +127,6 @@ async def get_current_user(
 
         raise UserNotFoundError()
 
-
     if user.token_version != token_version:
 
         logger.warning(
@@ -138,7 +136,6 @@ async def get_current_user(
 
         raise InvalidTokenError()
 
-
     if not user.is_active:
 
         logger.warning(
@@ -147,7 +144,6 @@ async def get_current_user(
         )
 
         raise AccountDeactivatedError()
-
 
     return user
 
@@ -234,6 +230,24 @@ def get_vector_store(
     )
 
 
+def get_document_cleanup_service(
+    uow: Annotated[
+        SQLAlchemyUnitOfWork,
+        Depends(get_uow),
+    ],
+    vector_store: Annotated[
+        VectorStoreService,
+        Depends(get_vector_store),
+    ],
+) -> DocumentCleanupService:
+
+    return DocumentCleanupService(
+        uow=uow,
+        storage_service=StorageService(),
+        vector_store=vector_store,
+    )
+
+
 def get_document_embedding_service(
     uow: Annotated[
         SQLAlchemyUnitOfWork,
@@ -310,7 +324,19 @@ DocumentServiceDep = Annotated[
 ]
 
 
+DocumentCleanupServiceDep = Annotated[
+    DocumentCleanupService,
+    Depends(get_document_cleanup_service),
+]
+
+
 DocumentProcessingServiceDep = Annotated[
     DocumentProcessingService,
     Depends(get_document_processing_service),
+]
+
+
+VectorStoreDep = Annotated[
+    VectorStoreService,
+    Depends(get_vector_store),
 ]

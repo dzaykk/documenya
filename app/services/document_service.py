@@ -25,7 +25,7 @@ class DocumentService:
         self,
         uow: AbstractUnitOfWork,
         storage_service: StorageService,
-    ):
+    ) -> None:
         self.uow = uow
         self.storage_service = storage_service
 
@@ -52,7 +52,6 @@ class DocumentService:
         file_path: str | None = None
 
         try:
-
             filename, file_path, file_size = (
                 await self.storage_service.save_file(file)
             )
@@ -72,7 +71,6 @@ class DocumentService:
             )
 
             async with self.uow:
-
                 document = await self.uow.documents.create(
                     document,
                 )
@@ -87,14 +85,12 @@ class DocumentService:
             return document
 
         except Exception:
-
             logger.exception(
                 "Document creation failed for user %s",
                 user.id,
             )
 
             if file_path is not None:
-
                 logger.info(
                     "Removing uploaded file '%s'",
                     file_path,
@@ -119,14 +115,12 @@ class DocumentService:
         )
 
         async with self.uow:
-
-            document = await self.uow.documents.get_by_id(
+            document = await self.uow.documents.get_by_id_and_owner(
                 document_id,
                 user.id,
             )
 
             if document is None:
-
                 logger.warning(
                     "Document %s not found for user %s",
                     document_id,
@@ -155,7 +149,6 @@ class DocumentService:
         )
 
         async with self.uow:
-
             items = await self.uow.documents.get_user_documents(
                 user.id,
                 params.search,
@@ -198,14 +191,12 @@ class DocumentService:
     ) -> Document:
 
         async with self.uow:
-
-            document = await self.uow.documents.get_by_id(
+            document = await self.uow.documents.get_by_id_and_owner(
                 document_id,
                 user.id,
             )
 
             if document is None:
-
                 logger.warning(
                     "Document %s not found for user %s",
                     document_id,
@@ -234,54 +225,3 @@ class DocumentService:
         )
 
         return document
-
-    async def delete_document(
-        self,
-        document_id: int,
-        user: User,
-    ) -> None:
-
-        async with self.uow:
-
-            document = await self.uow.documents.get_by_id(
-                document_id,
-                user.id,
-            )
-
-            if document is None:
-
-                logger.warning(
-                    "Document %s not found for user %s",
-                    document_id,
-                    user.id,
-                )
-
-                raise DocumentNotFoundError()
-
-            file_path = document.file_path
-
-            await self.uow.documents.delete(
-                document,
-            )
-
-            await self.uow.commit()
-
-        logger.info(
-            "Removing file '%s'",
-            file_path,
-        )
-
-        await self.storage_service.delete_file(
-            file_path,
-        )
-
-        logger.info(
-            "File '%s' removed",
-            file_path,
-        )
-
-        logger.info(
-            "Document %s deleted by user %s",
-            document_id,
-            user.id,
-        )

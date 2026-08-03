@@ -111,7 +111,7 @@ class QdrantVectorStore(VectorStore):
         try:
             await self._client.delete(
                 collection_name=self._collection,
-                wait=True,
+                wait=False,
                 points_selector=FilterSelector(
                     filter=Filter(
                         must=[
@@ -134,6 +134,40 @@ class QdrantVectorStore(VectorStore):
         except Exception as exc:
             logger.exception(
                 "Failed deleting document vectors",
+            )
+
+            raise VectorDeleteError() from exc
+
+    async def delete_user_documents(
+        self,
+        user_id: int,
+    ) -> None:
+        try:
+            await self._client.delete(
+                collection_name=self._collection,
+                wait=False,
+                points_selector=FilterSelector(
+                    filter=Filter(
+                        must=[
+                            FieldCondition(
+                                key="owner_id",
+                                match=MatchValue(
+                                    value=user_id,
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+            )
+
+            logger.info(
+                "Deleted all vectors for user %s",
+                user_id,
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "Failed deleting user vectors",
             )
 
             raise VectorDeleteError() from exc
