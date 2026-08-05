@@ -17,7 +17,7 @@ class ChunkMetadata:
 
 
 @dataclass(slots=True, frozen=True)
-class DocumentChunk:
+class ChunkDTO:
     id: UUID
     document_id: int
     text: str

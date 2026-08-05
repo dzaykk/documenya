@@ -48,15 +48,29 @@ services:
     restart: always
     env_file:
       - .env
+
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
+      NVIDIA_VISIBLE_DEVICES: all
+
     ports:
       - "8000:8000"
+
     volumes:
       - huggingface_cache:/opt/huggingface_cache
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,27 +81,35 @@ services:
       migrator:
         condition: service_completed_successfully
 
+
   worker:
     build: .
     restart: always
+
     command: celery -A app.workers.celery_app:celery_app worker --pool=threads --concurrency=4 --loglevel=info
+
     env_file:
       - .env
+
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documenya
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       NVIDIA_VISIBLE_DEVICES: all
+
     volumes:
       - huggingface_cache:/opt/huggingface_cache
+
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu]
+              capabilities:
+                - gpu
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,9 +118,12 @@ services:
       qdrant:
         condition: service_started
 
+
 volumes:
   postgres_data:
+
   qdrant_data:
+
   huggingface_cache:
     external: true
     name: documenya_huggingface_cache

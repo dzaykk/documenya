@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Protocol
+from collections.abc import Mapping
+from typing import Protocol, Any
 
 from app.ai.vectorstores.dto import (
     VectorPoint,
@@ -19,6 +20,7 @@ class VectorStore(Protocol):
         self,
         vector: tuple[float, ...],
         limit: int,
+        filters: Mapping[str, Any] | None = None,
     ) -> list[VectorSearchResult]:
         ...
 

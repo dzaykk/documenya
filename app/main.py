@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import IntegrityError
 
-from app.api import auth, documents, users
+from app.api import auth, documents, users, query
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.exceptions.base import AppException
@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(users.router)
     app.include_router(documents.router)
+    app.include_router(query.router)
 
     # Health check
     @app.get(

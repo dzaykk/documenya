@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.ai.chunking.dto import DocumentChunk
+from app.ai.chunking.dto import ChunkDTO
 
 
 @dataclass(slots=True, frozen=True)
@@ -15,7 +15,7 @@ class RetrievalRequest:
 
 @dataclass(slots=True, frozen=True)
 class RetrievedChunk:
-    chunk: DocumentChunk
+    chunk: ChunkDTO
     score: float
 
 

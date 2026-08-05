@@ -1,7 +1,10 @@
 import logging
 from uuid import uuid4
 
-from app.ai.chunking.dto import ChunkMetadata, DocumentChunk
+from app.ai.chunking.dto import (
+    ChunkDTO,
+    ChunkMetadata,
+)
 from app.models.document import Document
 
 from .splitter import RecursiveTextSplitter
@@ -19,7 +22,7 @@ class ChunkingService:
     async def chunk_document(
         self,
         document: Document,
-    ) -> list[DocumentChunk]:
+    ) -> list[ChunkDTO]:
         logger.info(
             "Chunking document %s",
             document.id,
@@ -42,11 +45,11 @@ class ChunkingService:
             len(parts),
         )
 
-        chunks: list[DocumentChunk] = []
+        chunks: list[ChunkDTO] = []
 
         for index, text in enumerate(parts):
             chunks.append(
-                DocumentChunk(
+                ChunkDTO(
                     id=uuid4(),
                     document_id=document.id,
                     text=text,

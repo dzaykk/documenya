@@ -11,11 +11,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chunking.service import ChunkingService
 from app.ai.chunking.splitter import RecursiveTextSplitter
+from app.ai.context.builder import ContextBuilder
 from app.ai.embeddings.providers.factory import (
     EmbeddingProviderFactory,
 )
 from app.ai.embeddings.service import (
     EmbeddingService,
+)
+from app.ai.llm.providers.factory import (
+    LLMProviderFactory,
+)
+from app.ai.llm.service import (
+    LLMService,
+)
+from app.ai.query.service import (
+    QueryService,
+)
+from app.ai.retrieval.service import (
+    RetrievalService,
 )
 from app.ai.services.document_embedding_service import (
     DocumentEmbeddingService,
@@ -29,14 +42,20 @@ from app.ai.vectorstores.qdrant.repository import (
 from app.ai.vectorstores.service import (
     VectorStoreService,
 )
-from app.core.security import decode_access_token
-from app.db.session import get_db
+from app.core.security import (
+    decode_access_token,
+)
+from app.db.session import (
+    get_db,
+)
 from app.exceptions.auth import (
     AccountDeactivatedError,
     InvalidTokenError,
     UserNotFoundError,
 )
-from app.models.user import User
+from app.models.user import (
+    User,
+)
 from app.repositories.user_repository import (
     UserRepository,
 )
@@ -101,11 +120,6 @@ async def get_current_user(
     )
 
     if payload is None:
-
-        logger.warning(
-            "Invalid access token",
-        )
-
         raise InvalidTokenError()
 
     user_id, token_version = payload
@@ -119,37 +133,18 @@ async def get_current_user(
     )
 
     if user is None:
-
-        logger.warning(
-            "User %s not found",
-            user_id,
-        )
-
         raise UserNotFoundError()
 
     if user.token_version != token_version:
-
-        logger.warning(
-            "Invalid token version for user %s",
-            user.id,
-        )
-
         raise InvalidTokenError()
 
     if not user.is_active:
-
-        logger.warning(
-            "Inactive user %s",
-            user.id,
-        )
-
         raise AccountDeactivatedError()
 
     return user
 
 
-# Existing services
-
+# BASIC SERVICES
 def get_auth_service(
     uow: Annotated[
         SQLAlchemyUnitOfWork,
@@ -193,8 +188,7 @@ def get_document_parser_service(
     return DocumentParserService()
 
 
-# AI dependencies
-
+# EMBEDDINGS
 def get_embedding_service(
 ) -> EmbeddingService:
 
@@ -207,8 +201,12 @@ def get_embedding_service(
     )
 
 
+# VECTOR STORE
 async def get_qdrant(
-) -> AsyncGenerator[AsyncQdrantClient, None]:
+) -> AsyncGenerator[
+    AsyncQdrantClient,
+    None,
+]:
 
     async with get_qdrant_client() as client:
         yield client
@@ -221,33 +219,16 @@ def get_vector_store(
     ],
 ) -> VectorStoreService:
 
-    qdrant_repo = QdrantVectorStore(
-        client=client,
+    repository = QdrantVectorStore(
+        client,
     )
 
     return VectorStoreService(
-        repository=qdrant_repo,
+        repository=repository,
     )
 
 
-def get_document_cleanup_service(
-    uow: Annotated[
-        SQLAlchemyUnitOfWork,
-        Depends(get_uow),
-    ],
-    vector_store: Annotated[
-        VectorStoreService,
-        Depends(get_vector_store),
-    ],
-) -> DocumentCleanupService:
-
-    return DocumentCleanupService(
-        uow=uow,
-        storage_service=StorageService(),
-        vector_store=vector_store,
-    )
-
-
+# DOCUMENT AI PIPELINE
 def get_document_embedding_service(
     uow: Annotated[
         SQLAlchemyUnitOfWork,
@@ -278,17 +259,14 @@ def get_document_processing_service(
         SQLAlchemyUnitOfWork,
         Depends(get_uow),
     ],
-
     parser: Annotated[
         DocumentParserService,
         Depends(get_document_parser_service),
     ],
-
     document_embedding_service: Annotated[
         DocumentEmbeddingService,
         Depends(get_document_embedding_service),
     ],
-
 ) -> DocumentProcessingService:
 
     return DocumentProcessingService(
@@ -298,8 +276,84 @@ def get_document_processing_service(
     )
 
 
-# Dependency aliases
+# RETRIEVAL + RAG
+def get_retrieval_service(
+    embedding_service: Annotated[
+        EmbeddingService,
+        Depends(get_embedding_service),
+    ],
+    vector_store: Annotated[
+        VectorStoreService,
+        Depends(get_vector_store),
+    ],
+) -> RetrievalService:
 
+    return RetrievalService(
+        embeddings=embedding_service,
+        vector_store=vector_store,
+    )
+
+
+def get_context_builder(
+) -> ContextBuilder:
+
+    return ContextBuilder()
+
+
+def get_llm_service(
+) -> LLMService:
+
+    provider = (
+        LLMProviderFactory.create()
+    )
+
+    return LLMService(
+        provider,
+    )
+
+
+def get_query_service(
+    retrieval: Annotated[
+        RetrievalService,
+        Depends(get_retrieval_service),
+    ],
+    context_builder: Annotated[
+        ContextBuilder,
+        Depends(get_context_builder),
+    ],
+    llm: Annotated[
+        LLMService,
+        Depends(get_llm_service),
+    ],
+) -> QueryService:
+
+    return QueryService(
+        retrieval=retrieval,
+        context_builder=context_builder,
+        llm=llm,
+    )
+
+
+# CLEANUP
+def get_document_cleanup_service(
+    uow: Annotated[
+        SQLAlchemyUnitOfWork,
+        Depends(get_uow),
+    ],
+    vector_store: Annotated[
+        VectorStoreService,
+        Depends(get_vector_store),
+    ],
+) -> DocumentCleanupService:
+
+    return DocumentCleanupService(
+        uow=uow,
+        storage_service=StorageService(),
+        vector_store=vector_store,
+    )
+
+
+# DEPENDENCY ALIASES
 CurrentUser = Annotated[
     User,
     Depends(get_current_user),
@@ -336,7 +390,37 @@ DocumentProcessingServiceDep = Annotated[
 ]
 
 
+DocumentEmbeddingServiceDep = Annotated[
+    DocumentEmbeddingService,
+    Depends(get_document_embedding_service),
+]
+
+
 VectorStoreDep = Annotated[
     VectorStoreService,
     Depends(get_vector_store),
+]
+
+
+LLMServiceDep = Annotated[
+    LLMService,
+    Depends(get_llm_service),
+]
+
+
+RetrievalServiceDep = Annotated[
+    RetrievalService,
+    Depends(get_retrieval_service),
+]
+
+
+ContextBuilderDep = Annotated[
+    ContextBuilder,
+    Depends(get_context_builder),
+]
+
+
+QueryServiceDep = Annotated[
+    QueryService,
+    Depends(get_query_service),
 ]

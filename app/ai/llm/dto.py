@@ -18,13 +18,15 @@ class ChatMessage:
 
 @dataclass(slots=True, frozen=True)
 class GenerationConfig:
-    temperature: float = 0.1
-    max_tokens: int = 1024
-    top_p: float = 0.95
+    temperature: float
+    max_tokens: int
+    top_p: float
+
+    frequency_penalty: float
+    presence_penalty: float
+
     stream: bool = False
     stop_sequences: tuple[str, ...] = ()
-    frequency_penalty: float = 0.0
-    presence_penalty: float = 0.0
 
 
 @dataclass(slots=True, frozen=True)
